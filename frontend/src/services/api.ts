@@ -54,5 +54,9 @@ export const adminService = {
     getOrderDetails: async (orderCode: string) => {
         const response = await apiClient.get<OrderDetail>(`/orders/${orderCode}`);
         return response.data;
+    },
+    deleteProduct: async (id: number) => {
+        const response = await apiClient.delete(`/products/${id}`);
+        return response.data;
     }
 };

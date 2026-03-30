@@ -8,7 +8,14 @@ function CatalogPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    const savedCart = localStorage.getItem('fabrica_cart');
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fabrica_cart', JSON.stringify(cart));
+  }, [cart]);
   
   const [customer, setCustomer] = useState({
     firstName: '',
@@ -116,6 +123,7 @@ function CatalogPage() {
       });
       
       setCart([]);
+      localStorage.removeItem('fabrica_cart');
       setCustomer({ firstName: '', lastName: '', email: '', phone: '' });
     } catch (err) {
       console.error(err);

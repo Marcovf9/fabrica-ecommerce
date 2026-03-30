@@ -47,4 +47,13 @@ public class ProductService {
         product.setSalePrice(request.salePrice());
         return productRepository.save(product);
     }
+
+    @Transactional
+    public void deactivateProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+        // Baja lógica: no lo borramos de la BD, solo lo ocultamos
+        product.setIsActive(false);
+        productRepository.save(product);
+    }
 }

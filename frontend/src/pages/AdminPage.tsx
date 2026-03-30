@@ -146,7 +146,6 @@ export default function AdminPage() {
     }
   };
 
-  // NUEVA FUNCIÓN: Editar precios dinámicamente
   const handleEditPrice = async (product: Product) => {
     const { value: newPrice } = await Swal.fire({
       title: `Modificar Precio`,
@@ -176,6 +175,28 @@ export default function AdminPage() {
         loadProducts(); 
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el precio.' });
+      }
+    }
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    const result = await Swal.fire({
+      title: '¿Dar de baja producto?',
+      text: `El producto ${product.name} dejará de estar visible en el catálogo público, pero su historial financiero se mantendrá.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e74c3c',
+      cancelButtonColor: '#7f8c8d',
+      confirmButtonText: 'Sí, Desactivar'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await adminService.deleteProduct(product.id);
+        Swal.fire({ icon: 'success', title: 'Desactivado', text: 'El producto ha sido dado de baja.', timer: 2000, showConfirmButton: false });
+        loadProducts(); // Recarga la lista
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo desactivar el producto.' });
       }
     }
   };
@@ -259,9 +280,14 @@ export default function AdminPage() {
                       <td style={{...tdStyle, fontSize: '0.9rem'}}>{p.name} <br/><span style={{color:'#7f8c8d'}}>{p.sku}</span></td>
                       <td style={tdStyle}><strong>${p.salePrice.toLocaleString('es-AR')}</strong></td>
                       <td style={tdStyle}>
-                        <button onClick={() => handleEditPrice(p)} style={{ backgroundColor: '#9b59b6', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                          Editar Precio
-                        </button>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button onClick={() => handleEditPrice(p)} style={{ backgroundColor: '#9b59b6', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                            Editar
+                          </button>
+                          <button onClick={() => handleDeleteProduct(p)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                            Dar de baja
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

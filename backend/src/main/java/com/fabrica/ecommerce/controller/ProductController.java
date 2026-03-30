@@ -7,6 +7,7 @@ import com.fabrica.ecommerce.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -55,5 +56,15 @@ public class ProductController {
         return ResponseEntity.ok(new ProductResponseDTO(
                 p.getId(), p.getSku(), p.getName(), p.getSalePrice(), p.getCategory().getName(), 0L
         ));
+    }
+    
+    /**
+     * Endpoint Privado: Desactivar un producto (Baja Lógica)
+     * DELETE /api/products/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivateProduct(@PathVariable Long id) {
+        productService.deactivateProduct(id);
+        return ResponseEntity.noContent().build();
     }
 }
