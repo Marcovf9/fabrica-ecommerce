@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Product, OrderRequestDTO, ProfitabilityReport, Order } from '../types';
+import type { Product, OrderRequestDTO, ProfitabilityReport, Order, OrderDetail } from '../types';
 
 export const apiClient = axios.create({
     baseURL: 'http://localhost:8080/api',
@@ -27,6 +27,10 @@ export const adminService = {
         const response = await apiClient.post('/products', productData);
         return response.data;
     },
+    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
+        const response = await apiClient.put(`/products/${id}`, productData);
+        return response.data;
+    },
     registerBatch: async (batchData: { productId: number, quantityProduced: number, totalBatchCost: number }) => {
         const response = await apiClient.post('/inventory/batches', batchData);
         return response.data;
@@ -45,6 +49,10 @@ export const adminService = {
     },
     cancelOrder: async (orderCode: string) => {
         const response = await apiClient.post(`/orders/${orderCode}/cancel`);
+        return response.data;
+    },
+    getOrderDetails: async (orderCode: string) => {
+        const response = await apiClient.get<OrderDetail>(`/orders/${orderCode}`);
         return response.data;
     }
 };

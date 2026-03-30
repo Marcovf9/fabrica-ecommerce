@@ -40,4 +40,9 @@ public class OrderController {
     public ResponseEntity<List<Order>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());
     }
+
+    @GetMapping("/{orderCode}")
+    public ResponseEntity<com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO> getOrderDetails(@PathVariable String orderCode) {
+        return ResponseEntity.ok(orderService.getOrderDetails(orderCode));
+    }
 }

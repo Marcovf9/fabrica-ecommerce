@@ -147,8 +147,30 @@ public class OrderService {
             throw new IllegalStateException("Solo se pueden cancelar pedidos en estado PENDING.");
         }
 
-        // Al cambiar a CANCELLED, la consulta del ProductRepository automáticamente libera el stock
         order.setStatus(Order.OrderStatus.CANCELLED);
         return orderRepository.save(order);
+    }
+
+    @Transactional(readOnly = true)
+    public com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO getOrderDetails(String orderCode) {
+        Order order = orderRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado"));
+        
+        List<com.fabrica.ecommerce.dto.order.OrderItemDetailDTO> items = orderItemRepository.findByOrderId(order.getId()).stream()
+                .map(item -> new com.fabrica.ecommerce.dto.order.OrderItemDetailDTO(
+                        item.getProduct().getName(),
+                        item.getProduct().getSku(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                )).toList();
+        
+        return new com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO(
+                order.getOrderCode(), 
+                order.getCustomerContact(), 
+                order.getStatus().name(), 
+                order.getTotalSaleAmount(), 
+                items
+        );
     }
 }

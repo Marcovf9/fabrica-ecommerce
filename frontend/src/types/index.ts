@@ -36,3 +36,19 @@ export interface ProfitabilityReport {
     netProfit: number;
     marginPercentage: number;
 }
+
+export interface OrderItemDetail {
+    productName: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
+    subTotal: number;
+}
+
+export interface OrderDetail {
+    orderCode: string;
+    customerContact: string;
+    status: string;
+    totalSaleAmount: number;
+    items: OrderItemDetail[];
+}
