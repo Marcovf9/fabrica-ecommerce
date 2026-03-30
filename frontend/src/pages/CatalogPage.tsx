@@ -73,21 +73,33 @@ function CatalogPage() {
   }
 
   const submitOrder = async () => {
-    if (cart.length === 0) return alert("El carrito está vacío.")
+    if (cart.length === 0) return alert("El carrito está vacío.");
     
-    // Validaciones estrictas
+    // 1. Validar que no haya campos vacíos
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim()) {
-      return alert("Todos los campos del cliente son obligatorios.")
+      return alert("Todos los campos del cliente son obligatorios.");
     }
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    // 2. Expresiones Regulares
+    const nameRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/; // Solo letras y espacios
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Formato correo
+    const phoneRegex = /^[0-9]+$/; // Solo números
+    
+    if (!nameRegex.test(customer.firstName)) {
+      return alert("El nombre solo debe contener letras.");
+    }
+    if (!nameRegex.test(customer.lastName)) {
+      return alert("El apellido solo debe contener letras.");
+    }
     if (!emailRegex.test(customer.email)) {
-      return alert("Por favor, ingresa un correo electrónico válido.")
+      return alert("Por favor, ingresa un correo electrónico válido.");
+    }
+    if (!phoneRegex.test(customer.phone)) {
+      return alert("El teléfono solo debe contener números (sin espacios ni guiones).");
     }
 
     try {
-      // Concatenamos para respetar el DTO del backend actual
-      const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`
+      const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
 
       const payload = {
         customerContact: formattedContact,
@@ -95,19 +107,18 @@ function CatalogPage() {
           productId: item.product.id,
           quantity: item.quantity
         }))
-      }
+      };
       
-      const response = await orderService.createPendingOrder(payload)
-      alert(`¡Pedido creado exitosamente!\nCódigo: ${response.orderCode}`)
+      const response = await orderService.createPendingOrder(payload);
+      alert(`¡Pedido creado exitosamente!\nCódigo: ${response.orderCode}`);
       
-      // Limpiar tras el éxito
-      setCart([])
-      setCustomer({ firstName: '', lastName: '', email: '', phone: '' })
+      setCart([]);
+      setCustomer({ firstName: '', lastName: '', email: '', phone: '' });
     } catch (err) {
-      console.error(err)
-      alert("Hubo un error al generar el pedido. Verifica el stock y la conexión.")
+      console.error(err);
+      alert("Hubo un error al generar el pedido. Verifica tu conexión.");
     }
-  }
+  };
 
   if (loading) return <h2 style={{ padding: '20px' }}>Cargando inventario...</h2>
   if (error) return <h2 style={{ padding: '20px', color: '#e74c3c' }}>{error}</h2>
@@ -133,10 +144,23 @@ function CatalogPage() {
                 <div key={product.id} style={{ border: '1px solid #e0e0e0', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                   <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{product.name}</h3>
                   <h2 style={{ color: '#27ae60', margin: '15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
+                  <p style={{ color: product.availableStock > 0 ? '#3498db' : '#e74c3c', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                    {product.availableStock > 0 ? `Stock: ${product.availableStock} unid.` : 'Agotado'}
+                  </p>
                   <button 
                     onClick={() => addToCart(product)}
-                    style={{ padding: '10px', width: '100%', cursor: 'pointer', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>
-                    Agregar al pedido
+                    disabled={product.availableStock <= 0}
+                    style={{ 
+                      padding: '10px', 
+                      width: '100%', 
+                      cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
+                      backgroundColor: product.availableStock > 0 ? '#3498db' : '#bdc3c7', 
+                      color: 'white', 
+                      border: 'none', 
+                      borderRadius: '4px', 
+                      fontWeight: 'bold' 
+                    }}>
+                    {product.availableStock > 0 ? 'Agregar al pedido' : 'Sin Stock'}
                   </button>
                 </div>
               ))}
@@ -192,13 +216,28 @@ function CatalogPage() {
         </h3>
         
         <div style={{ marginTop: '30px' }}>
-          <h4 style={{ marginBottom: '15px' }}>Datos del Cliente</h4>
+          <h4 style={{ marginBottom: '15px', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>Datos del Cliente</h4>
+          
           <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} style={inputStyle} />
-            <input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} style={inputStyle} />
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Nombre</label>
+              <input type="text" name="firstName" placeholder="Ej: Juan" value={customer.firstName} onChange={handleCustomerChange} style={inputStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Apellido</label>
+              <input type="text" name="lastName" placeholder="Ej: Pérez" value={customer.lastName} onChange={handleCustomerChange} style={inputStyle} />
+            </div>
           </div>
-          <input type="email" name="email" placeholder="Correo electrónico" value={customer.email} onChange={handleCustomerChange} style={{...inputStyle, marginBottom: '10px'}} />
-          <input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} style={{...inputStyle, marginBottom: '20px'}} />
+          
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Correo Electrónico</label>
+            <input type="email" name="email" placeholder="ejemplo@correo.com" value={customer.email} onChange={handleCustomerChange} style={inputStyle} />
+          </div>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Teléfono (Solo números)</label>
+            <input type="tel" name="phone" placeholder="Ej: 3514445555" value={customer.phone} onChange={handleCustomerChange} style={inputStyle} />
+          </div>
           
           <button 
             onClick={submitOrder}

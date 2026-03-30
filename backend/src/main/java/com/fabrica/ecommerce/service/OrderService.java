@@ -24,39 +24,43 @@ public class OrderService {
     private final ProductRepository productRepository;
 
 @Transactional
-public Order createPendingOrder(OrderRequestDTO request) {
-    Order order = new Order();
-    order.setCustomerContact(request.customerContact());
-    order.setStatus(Order.OrderStatus.PENDING);
-    // Generar un código único corto (Ej: PED-170364)
-    order.setOrderCode("PED-" + System.currentTimeMillis() % 1000000); 
-    
-    BigDecimal totalSale = BigDecimal.ZERO;
-    order = orderRepository.save(order);
+    public Order createPendingOrder(OrderRequestDTO request) {
+        Order order = new Order();
+        order.setCustomerContact(request.customerContact());
+        order.setStatus(Order.OrderStatus.PENDING);
+        order.setOrderCode("PED-" + System.currentTimeMillis() % 1000000); 
+        
+        // CORRECCIÓN: Inicializar en 0 para que MySQL no rechace el primer insert
+        order.setTotalSaleAmount(BigDecimal.ZERO);
+        
+        order = orderRepository.save(order);
 
-    for (OrderItemRequestDTO itemDto : request.items()) {
-        Product product = productRepository.findById(itemDto.productId())
-                .orElseThrow(() -> new IllegalArgumentException("Producto inválido: " + itemDto.productId()));
+        BigDecimal totalSale = BigDecimal.ZERO;
 
-        if (!product.getIsActive()) {
-            throw new IllegalStateException("El producto " + product.getSku() + " no está activo.");
+        for (OrderItemRequestDTO itemDto : request.items()) {
+            Product product = productRepository.findById(itemDto.productId())
+                    .orElseThrow(() -> new IllegalArgumentException("Producto inválido"));
+
+            if (!product.getIsActive()) {
+                throw new IllegalStateException("El producto no está activo.");
+            }
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProduct(product);
+            orderItem.setQuantity(itemDto.quantity());
+            orderItem.setUnitPrice(product.getSalePrice()); 
+
+            orderItemRepository.save(orderItem);
+
+            BigDecimal itemTotal = product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
+            totalSale = totalSale.add(itemTotal);
         }
 
-        OrderItem orderItem = new OrderItem();
-        orderItem.setOrder(order);
-        orderItem.setProduct(product);
-        orderItem.setQuantity(itemDto.quantity());
-        orderItem.setUnitPrice(product.getSalePrice()); // El precio se saca de la BD, NO del frontend
-
-        orderItemRepository.save(orderItem);
-
-        BigDecimal itemTotal = product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
-        totalSale = totalSale.add(itemTotal);
+        // Actualizamos con el total real
+        order.setTotalSaleAmount(totalSale);
+        return orderRepository.save(order);
     }
-
-    order.setTotalSaleAmount(totalSale);
-    return orderRepository.save(order);
-}
 
     @Transactional
     public Order confirmOrder(String orderCode) {
@@ -126,6 +130,25 @@ public Order createPendingOrder(OrderRequestDTO request) {
         // Finalizar la orden
         order.setTotalCostAmount(totalOrderCost);
         order.setStatus(Order.OrderStatus.CONFIRMED);
+        return orderRepository.save(order);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    @Transactional
+    public Order cancelOrder(String orderCode) {
+        Order order = orderRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado: " + orderCode));
+
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            throw new IllegalStateException("Solo se pueden cancelar pedidos en estado PENDING.");
+        }
+
+        // Al cambiar a CANCELLED, la consulta del ProductRepository automáticamente libera el stock
+        order.setStatus(Order.OrderStatus.CANCELLED);
         return orderRepository.save(order);
     }
 }

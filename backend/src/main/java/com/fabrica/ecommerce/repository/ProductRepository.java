@@ -15,11 +15,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySku(String sku);
 
     @Query("SELECT new com.fabrica.ecommerce.dto.product.ProductResponseDTO(" +
-           "p.id, p.sku, p.name, p.salePrice, c.name, COALESCE(SUM(ib.quantityRemaining), 0L)) " +
+           "p.id, p.sku, p.name, p.salePrice, c.name, " +
+           "(COALESCE((SELECT SUM(ib.quantityRemaining) FROM InventoryBatch ib WHERE ib.product.id = p.id), 0L) - " +
+           "COALESCE((SELECT SUM(oi.quantity) FROM OrderItem oi JOIN oi.order o WHERE oi.product.id = p.id AND o.status = 'PENDING'), 0L))) " +
            "FROM Product p " +
            "JOIN p.category c " +
-           "LEFT JOIN InventoryBatch ib ON ib.product.id = p.id " +
-           "WHERE p.isActive = true " +
-           "GROUP BY p.id, p.sku, p.name, p.salePrice, c.name")
+           "WHERE p.isActive = true")
     List<ProductResponseDTO> getActiveCatalogWithStock();
 }

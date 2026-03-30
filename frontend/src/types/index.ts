@@ -19,3 +19,20 @@ export interface OrderRequestDTO {
         quantity: number;
     }[];
 }
+
+export interface Order {
+    id: number;
+    orderCode: string;
+    customerContact: string;
+    status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+    totalSaleAmount: number;
+    totalCostAmount: number | null;
+}
+
+export interface ProfitabilityReport {
+    category: string;
+    totalRevenue: number;
+    totalCost: number;
+    netProfit: number;
+    marginPercentage: number;
+}

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Product, OrderRequestDTO } from '../types';
+import type { Product, OrderRequestDTO, ProfitabilityReport, Order } from '../types';
 
 export const apiClient = axios.create({
     baseURL: 'http://localhost:8080/api',
@@ -22,7 +22,6 @@ export const orderService = {
     }
 };
 
-// Servicios de Administración
 export const adminService = {
     createProduct: async (productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
         const response = await apiClient.post('/products', productData);
@@ -30,6 +29,22 @@ export const adminService = {
     },
     registerBatch: async (batchData: { productId: number, quantityProduced: number, totalBatchCost: number }) => {
         const response = await apiClient.post('/inventory/batches', batchData);
+        return response.data;
+    },
+    getProfitabilityReport: async () => {
+        const response = await apiClient.get<ProfitabilityReport[]>('/reports/profitability');
+        return response.data;
+    },
+    getOrders: async () => {
+        const response = await apiClient.get<Order[]>('/orders');
+        return response.data;
+    },
+    confirmOrder: async (orderCode: string) => {
+        const response = await apiClient.post(`/orders/${orderCode}/confirm`);
+        return response.data;
+    },
+    cancelOrder: async (orderCode: string) => {
+        const response = await apiClient.post(`/orders/${orderCode}/cancel`);
         return response.data;
     }
 };
