@@ -1,0 +1,35 @@
+import axios from 'axios';
+import type { Product, OrderRequestDTO } from '../types';
+
+export const apiClient = axios.create({
+    baseURL: 'http://localhost:8080/api',
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+
+export const catalogService = {
+    getCatalog: async () => {
+        const response = await apiClient.get<Product[]>('/products/catalog');
+        return response.data;
+    }
+};
+
+export const orderService = {
+    createPendingOrder: async (orderData: OrderRequestDTO) => {
+        const response = await apiClient.post('/orders', orderData);
+        return response.data;
+    }
+};
+
+// Servicios de Administración
+export const adminService = {
+    createProduct: async (productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
+        const response = await apiClient.post('/products', productData);
+        return response.data;
+    },
+    registerBatch: async (batchData: { productId: number, quantityProduced: number, totalBatchCost: number }) => {
+        const response = await apiClient.post('/inventory/batches', batchData);
+        return response.data;
+    }
+};
