@@ -17,7 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT new com.fabrica.ecommerce.dto.product.ProductResponseDTO(" +
            "p.id, p.sku, p.name, p.salePrice, c.name, " +
            "(COALESCE((SELECT SUM(ib.quantityRemaining) FROM InventoryBatch ib WHERE ib.product.id = p.id), 0L) - " +
-           "COALESCE((SELECT SUM(oi.quantity) FROM OrderItem oi JOIN oi.order o WHERE oi.product.id = p.id AND o.status = 'PENDING'), 0L))) " +
+           "COALESCE((SELECT SUM(oi.quantity) FROM OrderItem oi JOIN oi.order o WHERE oi.product.id = p.id AND o.status = 'PENDING'), 0L)), " +
+           "p.imageUrl) " +
            "FROM Product p " +
            "JOIN p.category c " +
            "WHERE p.isActive = true")

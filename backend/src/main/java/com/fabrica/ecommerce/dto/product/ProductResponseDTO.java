@@ -8,5 +8,6 @@ public record ProductResponseDTO(
         String name,
         BigDecimal salePrice,
         String categoryName,
-        Long availableStock
+        Long availableStock,
+        String imageUrl
 ) {}

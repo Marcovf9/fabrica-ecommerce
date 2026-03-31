@@ -1,10 +1,13 @@
 export interface Product {
     id: number;
+    categoryId: number;
+    categoryName: string;
     sku: string;
     name: string;
     salePrice: number;
-    categoryName: string;
     availableStock: number;
+    isActive: boolean;
+    imageUrl?: string;
 }
 
 export interface CartItem {
@@ -24,7 +27,7 @@ export interface Order {
     id: number;
     orderCode: string;
     customerContact: string;
-    status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+    status: 'PENDING' | 'PAID' | 'SHIPPED' | 'CANCELLED';
     totalSaleAmount: number;
     totalCostAmount: number | null;
 }

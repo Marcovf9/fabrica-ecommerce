@@ -23,7 +23,6 @@ public class Order {
     @Column(name = "total_sale_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalSaleAmount;
 
-    // Es nulo hasta que el pedido pasa a CONFIRMED y se calculan los lotes
     @Column(name = "total_cost_amount", precision = 10, scale = 2)
     private BigDecimal totalCostAmount;
 
@@ -38,7 +37,7 @@ public class Order {
     private LocalDateTime updatedAt;
 
     public enum OrderStatus {
-        PENDING, CONFIRMED, CANCELLED
+        PENDING, PAID, SHIPPED, CANCELLED
     }
 
     @PrePersist

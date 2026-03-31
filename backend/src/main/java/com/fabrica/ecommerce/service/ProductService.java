@@ -9,7 +9,9 @@ import com.fabrica.ecommerce.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +21,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public List<ProductResponseDTO> getActiveCatalog() {
@@ -26,16 +29,21 @@ public class ProductService {
     }
 
     @Transactional
-    public Product createProduct(ProductRequestDTO request) {
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new IllegalArgumentException("Categoría inválida"));
-        
+    public Product createProduct(Long categoryId, String sku, String name, BigDecimal salePrice, MultipartFile image) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
+
         Product product = new Product();
         product.setCategory(category);
-        product.setSku(request.sku());
-        product.setName(request.name());
-        product.setSalePrice(request.salePrice());
-        product.setIsActive(true);
+        product.setSku(sku);
+        product.setName(name);
+        product.setSalePrice(salePrice);
+        
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = fileStorageService.storeFile(image);
+            product.setImageUrl(imageUrl);
+        }
+
         return productRepository.save(product);
     }
 

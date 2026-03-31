@@ -30,6 +30,12 @@ public class OrderController {
         return ResponseEntity.ok(confirmedOrder);
     }
 
+    @PostMapping("/{orderCode}/ship")
+    public ResponseEntity<Order> shipOrder(@PathVariable String orderCode) {
+        Order shippedOrder = orderService.shipOrder(orderCode);
+        return ResponseEntity.ok(shippedOrder);
+    }
+
     @PostMapping("/{orderCode}/cancel")
     public ResponseEntity<Order> cancelOrder(@PathVariable String orderCode) {
         Order cancelledOrder = orderService.cancelOrder(orderCode);

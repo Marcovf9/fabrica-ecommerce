@@ -8,7 +8,6 @@ function CatalogPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Memoria del carrito
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('fabrica_cart');
     return savedCart ? JSON.parse(savedCart) : [];
@@ -16,7 +15,6 @@ function CatalogPage() {
   
   const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '' })
 
-  // NUEVO: Estados para Búsqueda y Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
 
@@ -102,12 +100,23 @@ function CatalogPage() {
       const payload = { customerContact: formattedContact, items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })) };
       
       const response = await orderService.createPendingOrder(payload);
+      const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
       
+      const waMessage = `Hola, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por un total de $${cartTotal.toLocaleString('es-AR')}. Quiero coordinar el pago!`;
+      const waUrl = `https://wa.me/5493517150510?text=${encodeURIComponent(waMessage)}`;
+
       Swal.fire({
         icon: 'success',
-        title: '¡Pedido Confirmado!',
-        html: `Tu código de seguimiento es: <b>${response.orderCode}</b><br/><br/>Nos pondremos en contacto a la brevedad.`,
-        confirmButtonColor: '#27ae60'
+        title: '¡Pedido Registrado!',
+        html: `Tu código de seguimiento es: <b>${response.orderCode}</b><br/><br/>El stock ha sido reservado. Por favor, contáctanos por WhatsApp para realizar el pago y confirmar la operación.`,
+        confirmButtonColor: '#25D366',
+        confirmButtonText: 'Coordinar Pago (WhatsApp)',
+        showCancelButton: true,
+        cancelButtonText: 'Cerrar'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.open(waUrl, '_blank');
+        }
       });
       
       setCart([]);
@@ -140,10 +149,11 @@ function CatalogPage() {
       <div style={{ flex: 2 }}>
         <h1>Catálogo de Productos</h1>
         
-        {/* BARRA DE BÚSQUEDA Y FILTROS */}
         <div style={{ marginBottom: '30px', backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
           <input 
-            type="text" 
+            type="search" 
+            name="catalogSearch"
+            autoComplete="off"
             placeholder="🔍 Buscar producto o categoria..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -179,6 +189,18 @@ function CatalogPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
                 {filteredProducts.filter(p => p.categoryName === category).map((product) => (
                   <div key={product.id} style={{ border: '1px solid #e0e0e0', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                  <div style={{ height: '220px', backgroundColor: '#f8f9fa', borderRadius: '4px', marginBottom: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', border: '1px solid #eee' }}>
+                    {product.imageUrl ? (
+                      <img 
+                        src={`http://localhost:8080${product.imageUrl}`} 
+                        alt={product.name} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span style={{ color: '#bdc3c7', fontSize: '3rem' }}>📷</span>
+                    )}
+                  </div>
                     <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{product.name}</h3>
                     <h2 style={{ color: '#27ae60', margin: '15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
                     <p style={{ color: product.availableStock > 0 ? '#3498db' : '#e74c3c', fontSize: '0.9rem', fontWeight: 'bold' }}>
@@ -202,7 +224,6 @@ function CatalogPage() {
       </div>
 
       <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '25px', borderRadius: '12px', height: 'fit-content', border: '1px solid #e9ecef', position: 'sticky', top: '20px' }}>
-        {/* ... (El resto del carrito queda exactamente igual) ... */}
         <h2 style={{ marginTop: 0 }}>Resumen del Pedido</h2>
         <hr style={{ borderColor: '#dee2e6', marginBottom: '20px' }} />
         

@@ -21,7 +21,7 @@ apiClient.interceptors.request.use((config) => {
 export const authService = {
     login: async (credentials: { username: string, password: string }) => {
         const response = await apiClient.post('/auth/login', credentials);
-        return response.data; // Retorna { token: "eyJhb..." }
+        return response.data;
     }
 };
 
@@ -44,8 +44,12 @@ export const orderService = {
 };
 
 export const adminService = {
-    createProduct: async (productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
-        const response = await apiClient.post('/products', productData);
+    createProduct: async (formData: FormData) => {
+        const response = await apiClient.post('/products', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
         return response.data;
     },
     updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
@@ -66,6 +70,11 @@ export const adminService = {
     },
     confirmOrder: async (orderCode: string) => {
         const response = await apiClient.post(`/orders/${orderCode}/confirm`);
+        return response.data;
+    },
+    // NUEVO: Llamada a la API para despachar
+    shipOrder: async (orderCode: string) => {
+        const response = await apiClient.post(`/orders/${orderCode}/ship`);
         return response.data;
     },
     cancelOrder: async (orderCode: string) => {

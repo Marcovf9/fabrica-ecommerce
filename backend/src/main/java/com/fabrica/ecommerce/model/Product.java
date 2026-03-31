@@ -13,19 +13,22 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(unique = true, nullable = false, length = 50)
     private String sku;
 
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(name = "sale_price", nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal salePrice;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }

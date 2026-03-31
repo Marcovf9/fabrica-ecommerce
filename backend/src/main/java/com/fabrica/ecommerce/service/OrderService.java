@@ -22,17 +22,24 @@ public class OrderService {
     private final InventoryBatchRepository inventoryBatchRepository;
     private final OrderItemBatchAllocationRepository allocationRepository;
     private final ProductRepository productRepository;
+    private final EmailService emailService;
 
-@Transactional
+    private String extractEmail(String customerContact) {
+        try {
+            return customerContact.split("\\|")[1].trim();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Transactional
     public Order createPendingOrder(OrderRequestDTO request) {
         Order order = new Order();
         order.setCustomerContact(request.customerContact());
         order.setStatus(Order.OrderStatus.PENDING);
         order.setOrderCode("PED-" + System.currentTimeMillis() % 1000000); 
         
-        // CORRECCIÓN: Inicializar en 0 para que MySQL no rechace el primer insert
         order.setTotalSaleAmount(BigDecimal.ZERO);
-        
         order = orderRepository.save(order);
 
         BigDecimal totalSale = BigDecimal.ZERO;
@@ -57,9 +64,20 @@ public class OrderService {
             totalSale = totalSale.add(itemTotal);
         }
 
-        // Actualizamos con el total real
         order.setTotalSaleAmount(totalSale);
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        String email = extractEmail(savedOrder.getCustomerContact());
+        if (email != null) {
+            emailService.sendHtmlEmail(email, "Pedido Registrado #" + savedOrder.getOrderCode(),
+                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                "<h2 style='color: #2c3e50;'>¡Hola! Recibimos tu pedido " + savedOrder.getOrderCode() + "</h2>" +
+                "<p>Hemos registrado tu solicitud exitosamente. Tu stock ha sido reservado.</p>" +
+                "<p>Por favor contáctanos por WhatsApp para coordinar el pago por un total de <b>$" + totalSale + "</b>.</p>" +
+                "</div>");
+        }
+
+        return savedOrder;
     }
 
     @Transactional
@@ -74,31 +92,25 @@ public class OrderService {
         BigDecimal totalOrderCost = BigDecimal.ZERO;
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
 
-        // Procesar cada producto del carrito
         for (OrderItem item : items) {
             int quantityToFulfill = item.getQuantity();
             BigDecimal itemTotalCost = BigDecimal.ZERO;
 
-            // Traer lotes de producción disponibles (FIFO estricto gracias a la query)
             List<InventoryBatch> availableBatches = inventoryBatchRepository
                     .findAvailableBatchesForProduct(item.getProduct().getId());
 
-            // Loop de asignación fraccionada
             for (InventoryBatch batch : availableBatches) {
-                if (quantityToFulfill == 0) break; // Ya cubrimos la demanda de este ítem
+                if (quantityToFulfill == 0) break;
 
                 int availableInBatch = batch.getQuantityRemaining();
                 int quantityToTake = Math.min(quantityToFulfill, availableInBatch);
 
-                // 1. Restar físicamente del lote
                 batch.setQuantityRemaining(availableInBatch - quantityToTake);
-                inventoryBatchRepository.save(batch); // Actualiza la DB
+                inventoryBatchRepository.save(batch); 
 
-                // 2. Calcular el costo exacto de esta fracción
                 BigDecimal costOfThisFraction = batch.getUnitCost().multiply(BigDecimal.valueOf(quantityToTake));
                 itemTotalCost = itemTotalCost.add(costOfThisFraction);
 
-                // 3. Crear el registro de auditoría en la tabla de resolución
                 OrderItemBatchAllocation allocation = new OrderItemBatchAllocation();
                 allocation.setOrderItem(item);
                 allocation.setInventoryBatch(batch);
@@ -106,33 +118,67 @@ public class OrderService {
                 allocation.setCostAtAllocation(costOfThisFraction);
                 allocationRepository.save(allocation);
 
-                // 4. Reducir la demanda pendiente
                 quantityToFulfill -= quantityToTake;
             }
 
-            // Validación crítica: Si el loop terminó y aún falta cantidad, hay un quiebre de stock físico
             if (quantityToFulfill > 0) {
                 throw new InsufficientStockException(
-                        "Stock insuficiente para el producto SKU: " + item.getProduct().getSku() + 
+                        "Stock físico insuficiente para el SKU: " + item.getProduct().getSku() + 
                         ". Faltan " + quantityToFulfill + " unidades."
                 );
             }
 
-            // Consolidar el costo promedio en la línea del pedido
             BigDecimal unitCost = itemTotalCost.divide(BigDecimal.valueOf(item.getQuantity()), 2, RoundingMode.HALF_UP);
             item.setUnitCost(unitCost);
             orderItemRepository.save(item);
 
-            // Sumar al total general de la orden
             totalOrderCost = totalOrderCost.add(itemTotalCost);
         }
 
-        // Finalizar la orden
         order.setTotalCostAmount(totalOrderCost);
-        order.setStatus(Order.OrderStatus.CONFIRMED);
-        return orderRepository.save(order);
+        order.setStatus(Order.OrderStatus.PAID);
+        Order savedOrder = orderRepository.save(order);
+
+        // DISPARO DE CORREO: Pago Confirmado
+        String email = extractEmail(savedOrder.getCustomerContact());
+        if (email != null) {
+            emailService.sendHtmlEmail(email, "Pago Confirmado #" + savedOrder.getOrderCode(),
+                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                "<h2 style='color: #27ae60;'>¡Pago recibido!</h2>" +
+                "<p>Hemos registrado el pago de tu pedido <b>" + savedOrder.getOrderCode() + "</b> de manera exitosa.</p>" +
+                "<p>En breve procederemos a prepararlo para su despacho. Te notificaremos cuando esté en camino.</p>" +
+                "</div>");
+        }
+
+        return savedOrder;
     }
     
+    @Transactional
+    public Order shipOrder(String orderCode) {
+        Order order = orderRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado: " + orderCode));
+
+        if (order.getStatus() != Order.OrderStatus.PAID) {
+            throw new IllegalStateException("El pedido debe estar PAGADO (PAID) antes de ser enviado.");
+        }
+
+        order.setStatus(Order.OrderStatus.SHIPPED);
+        Order savedOrder = orderRepository.save(order);
+
+        // DISPARO DE CORREO: Despachado
+        String email = extractEmail(savedOrder.getCustomerContact());
+        if (email != null) {
+            emailService.sendHtmlEmail(email, "Pedido Despachado #" + savedOrder.getOrderCode(),
+                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                "<h2 style='color: #2980b9;'>Tu pedido está en camino 🚚</h2>" +
+                "<p>El pedido <b>" + savedOrder.getOrderCode() + "</b> ha salido de nuestras instalaciones.</p>" +
+                "<p>¡Gracias por confiar en nuestra fábrica!</p>" +
+                "</div>");
+        }
+
+        return savedOrder;
+    }
+
     @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
@@ -148,7 +194,20 @@ public class OrderService {
         }
 
         order.setStatus(Order.OrderStatus.CANCELLED);
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+
+        // DISPARO DE CORREO: Cancelado
+        String email = extractEmail(savedOrder.getCustomerContact());
+        if (email != null) {
+            emailService.sendHtmlEmail(email, "Pedido Cancelado #" + savedOrder.getOrderCode(),
+                "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+                "<h2 style='color: #e74c3c;'>Pedido Cancelado</h2>" +
+                "<p>Tu pedido <b>" + savedOrder.getOrderCode() + "</b> ha sido cancelado y tu stock reservado ha sido liberado.</p>" +
+                "<p>Si crees que esto es un error, por favor comunícate con nosotros.</p>" +
+                "</div>");
+        }
+
+        return savedOrder;
     }
 
     @Transactional(readOnly = true)

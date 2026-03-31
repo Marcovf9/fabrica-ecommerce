@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { adminService, catalogService, authService } from '../services/api';
 import type { Product, ProfitabilityReport, Order, OrderDetail } from '../types';
 import Swal from 'sweetalert2';
-// Importaciones para los gráficos
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // NUEVO: Estados para credenciales reales
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -18,9 +16,9 @@ export default function AdminPage() {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetail | null>(null);
 
   const [newProduct, setNewProduct] = useState({ categoryId: 1, name: '', salePrice: '' });
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [newBatch, setNewBatch] = useState({ productId: 0, quantityProduced: '', totalBatchCost: '' });
 
-  // NUEVO: Verifica si hay un token válido al cargar la página
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
@@ -36,7 +34,6 @@ export default function AdminPage() {
     }
   }, [isAuthenticated]);
 
-  // NUEVO: Manejador centralizado de errores de API (intercepta 401/403)
   const handleApiError = (error: any, defaultMessage: string = 'Ocurrió un error') => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       handleLogout();
@@ -74,12 +71,11 @@ export default function AdminPage() {
     }
   };
 
-  // NUEVO: Lógica de Login contra el backend
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const data = await authService.login({ username, password });
-      localStorage.setItem('admin_token', data.token); // Guardamos la llave
+      localStorage.setItem('admin_token', data.token);
       setIsAuthenticated(true);
       Swal.fire({ icon: 'success', title: 'Acceso Autorizado', timer: 1500, showConfirmButton: false });
     } catch (error) {
@@ -87,7 +83,6 @@ export default function AdminPage() {
     }
   };
 
-  // NUEVO: Lógica de Logout
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     setIsAuthenticated(false);
@@ -98,12 +93,22 @@ export default function AdminPage() {
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const generatedSku = `PRD-${Date.now().toString().slice(-6)}`;
-    const payload = { categoryId: newProduct.categoryId, sku: generatedSku, name: newProduct.name, salePrice: Number(newProduct.salePrice) };
+    
+    const formData = new FormData();
+    formData.append('categoryId', newProduct.categoryId.toString());
+    formData.append('sku', generatedSku);
+    formData.append('name', newProduct.name);
+    formData.append('salePrice', newProduct.salePrice.toString());
+    
+    if (imageFile) {
+      formData.append('image', imageFile);
+    }
 
     try {
-      await adminService.createProduct(payload);
+      await adminService.createProduct(formData);
       Swal.fire({ icon: 'success', title: '¡Producto agregado!', html: `SKU Asignado: <b>${generatedSku}</b>` });
       setNewProduct({ categoryId: 1, name: '', salePrice: '' });
+      setImageFile(null); 
       loadProducts();
     } catch (error) {
       handleApiError(error, 'No se pudo crear el producto.');
@@ -127,23 +132,46 @@ export default function AdminPage() {
 
   const handleConfirmOrder = async (orderCode: string) => {
     const result = await Swal.fire({
-      title: '¿Confirmar Pago y Despachar?',
-      text: `El pedido ${orderCode} descontará el stock definitivamente.`,
+      title: '¿Confirmar Pago?',
+      text: `Se descontará el stock físico del pedido ${orderCode}.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#27ae60',
       cancelButtonColor: '#7f8c8d',
-      confirmButtonText: 'Sí, Confirmar',
+      confirmButtonText: 'Sí, Pago Recibido',
       cancelButtonText: 'Volver'
     });
     
     if (result.isConfirmed) {
       try {
         await adminService.confirmOrder(orderCode);
-        Swal.fire({ icon: 'success', title: '¡Confirmado!', text: 'Stock y costos actualizados exitosamente.', timer: 2000, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: '¡Cobrado!', text: 'Stock y costos actualizados exitosamente.', timer: 2000, showConfirmButton: false });
         loadOrders(); loadProducts(); loadReport(); 
       } catch (error: any) {
-        handleApiError(error, 'No se pudo confirmar el pedido.');
+        handleApiError(error, 'No se pudo procesar el pago.');
+      }
+    }
+  };
+
+  const handleShipOrder = async (orderCode: string) => {
+    const result = await Swal.fire({
+      title: '¿Marcar como Enviado?',
+      text: `El pedido ${orderCode} saldrá del galpón.`,
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonColor: '#2980b9',
+      cancelButtonColor: '#7f8c8d',
+      confirmButtonText: 'Sí, Despachar',
+      cancelButtonText: 'Volver'
+    });
+    
+    if (result.isConfirmed) {
+      try {
+        await adminService.shipOrder(orderCode);
+        Swal.fire({ icon: 'success', title: '¡Despachado!', text: 'El pedido ha sido marcado como enviado.', timer: 2000, showConfirmButton: false });
+        loadOrders();
+      } catch (error: any) {
+        handleApiError(error, 'No se pudo despachar el pedido.');
       }
     }
   };
@@ -235,7 +263,17 @@ export default function AdminPage() {
     }
   };
 
-  // NUEVO: Vista de Login actualizada
+  // Función para resolver estilos de estados
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'PENDING': return { bg: '#fcf3cf', color: '#d4ac0d', text: 'PENDIENTE' };
+      case 'PAID': return { bg: '#d4efdf', color: '#1e8449', text: 'PAGADO' };
+      case 'SHIPPED': return { bg: '#aed6f1', color: '#2874a6', text: 'ENVIADO' };
+      case 'CANCELLED': return { bg: '#fadbd8', color: '#c0392b', text: 'CANCELADO' };
+      default: return { bg: '#eee', color: '#333', text: status };
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '100px', fontFamily: 'sans-serif' }}>
@@ -249,7 +287,6 @@ export default function AdminPage() {
     );
   }
 
-  // Paleta de colores para el gráfico de torta
   const COLORS = ['#2980b9', '#e67e22', '#27ae60', '#8e44ad', '#f1c40f'];
 
   return (
@@ -260,7 +297,6 @@ export default function AdminPage() {
         input[type=number] { -moz-appearance: textfield; }
       `}</style>
 
-      {/* NUEVO: Encabezado con botón de cerrar sesión */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1 style={{ color: '#2c3e50', margin: 0 }}>⚙️ Panel de Control de Fábrica</h1>
         <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -269,7 +305,6 @@ export default function AdminPage() {
       </div>
       <hr style={{ marginBottom: '30px' }}/>
 
-      {/* PANEL DE GRÁFICOS VISUALES */}
       {report.length > 0 && (
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           
@@ -280,7 +315,7 @@ export default function AdminPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="category" />
                 <YAxis tickFormatter={(val) => `$${(val / 1000)}k`} />
-                <RechartsTooltip formatter={(value: number) => `$${value.toLocaleString('es-AR')}`} />
+                <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} />
                 <Legend />
                 <Bar dataKey="totalRevenue" name="Ingresos Brutos" fill="#2ecc71" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="totalCost" name="Costo de Materiales" fill="#e74c3c" radius={[4, 4, 0, 0]} />
@@ -306,7 +341,7 @@ export default function AdminPage() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <RechartsTooltip formatter={(value: number) => `$${value.toLocaleString('es-AR')}`} />
+                <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} />
                 <Legend verticalAlign="bottom" height={36}/>
               </PieChart>
             </ResponsiveContainer>
@@ -317,7 +352,6 @@ export default function AdminPage() {
 
       <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         
-        {/* COLUMNA IZQ: Formularios y Edición de Precios */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1, minWidth: '350px' }}>
           <div style={cardStyle}>
             <h3>🏷️ Crear Nuevo Producto</h3>
@@ -331,6 +365,8 @@ export default function AdminPage() {
               <input required type="text" placeholder="Ej: Fogonero XL" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} style={inputStyle} />
               <label style={labelStyle}>Precio de Venta al Público ($)</label>
               <input required type="number" placeholder="Ej: 150000" value={newProduct.salePrice} onChange={(e) => setNewProduct({...newProduct, salePrice: e.target.value})} style={inputStyle} />
+              <label style={labelStyle}>Fotografía del Producto (Opcional)</label>
+              <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} style={{...inputStyle, padding: '6px'}} />
               <button type="submit" style={btnStyle('#2980b9')}>Crear Producto</button>
             </form>
           </div>
@@ -352,7 +388,6 @@ export default function AdminPage() {
             </form>
           </div>
 
-          {/* Listado de Catálogo para Editar Precios */}
           <div style={{...cardStyle, borderTop: '4px solid #9b59b6'}}>
             <h3>📝 Catálogo Activo (Precios)</h3>
             <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
@@ -387,7 +422,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* COLUMNA DER: Reportes y Pedidos */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1.5, minWidth: '400px' }}>
           
           <div style={{ ...cardStyle, borderTop: '4px solid #f39c12' }}>
@@ -437,40 +471,48 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={tdStyle}><strong>{order.orderCode}</strong></td>
-                        <td style={tdStyle}>{order.customerContact.split('|')[0]}</td>
-                        <td style={tdStyle}>${order.totalSaleAmount.toLocaleString('es-AR')}</td>
-                        <td style={tdStyle}>
-                          <span style={{ 
-                            padding: '4px 8px', 
-                            backgroundColor: order.status === 'PENDING' ? '#fcf3cf' : (order.status === 'CONFIRMED' ? '#d4efdf' : '#fadbd8'), 
-                            color: order.status === 'PENDING' ? '#d4ac0d' : (order.status === 'CONFIRMED' ? '#1e8449' : '#c0392b'), 
-                            borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' 
-                          }}>
-                            {order.status === 'PENDING' ? 'PENDIENTE' : (order.status === 'CONFIRMED' ? 'CONFIRMADO' : 'CANCELADO')}
-                          </span>
-                        </td>
-                        <td style={tdStyle}>
-                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                            <button onClick={() => handleViewDetails(order.orderCode)} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                              Ver Detalle
-                            </button>
-                            {order.status === 'PENDING' && (
-                              <>
-                                <button onClick={() => handleConfirmOrder(order.orderCode)} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                  Confirmar
+                    {orders.map((order) => {
+                      const statusStyle = getStatusStyle(order.status);
+                      return (
+                        <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={tdStyle}><strong>{order.orderCode}</strong></td>
+                          <td style={tdStyle}>{order.customerContact.split('|')[0]}</td>
+                          <td style={tdStyle}>${order.totalSaleAmount.toLocaleString('es-AR')}</td>
+                          <td style={tdStyle}>
+                            <span style={{ 
+                              padding: '4px 8px', 
+                              backgroundColor: statusStyle.bg, 
+                              color: statusStyle.color, 
+                              borderRadius: '4px', fontWeight: 'bold', fontSize: '0.85rem' 
+                            }}>
+                              {statusStyle.text}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>
+                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                              <button onClick={() => handleViewDetails(order.orderCode)} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                Ver Detalle
+                              </button>
+                              {order.status === 'PENDING' && (
+                                <>
+                                  <button onClick={() => handleConfirmOrder(order.orderCode)} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Cobrado
+                                  </button>
+                                  <button onClick={() => handleCancelOrder(order.orderCode)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                    Cancelar
+                                  </button>
+                                </>
+                              )}
+                              {order.status === 'PAID' && (
+                                <button onClick={() => handleShipOrder(order.orderCode)} style={{ backgroundColor: '#2980b9', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                  Despachar
                                 </button>
-                                <button onClick={() => handleCancelOrder(order.orderCode)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                  Cancelar
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -489,7 +531,7 @@ export default function AdminPage() {
             </div>
             
             <p><strong>Cliente / Contacto:</strong> {selectedOrderDetails.customerContact}</p>
-            <p><strong>Estado:</strong> {selectedOrderDetails.status}</p>
+            <p><strong>Estado:</strong> {getStatusStyle(selectedOrderDetails.status).text}</p>
 
             <h3 style={{ marginTop: '20px', color: '#34495e' }}>Artículos a preparar:</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>

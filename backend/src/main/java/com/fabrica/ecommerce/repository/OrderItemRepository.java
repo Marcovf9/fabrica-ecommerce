@@ -22,7 +22,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
            "JOIN oi.product p " +
            "JOIN p.category c " +
            "JOIN oi.order o " +
-           "WHERE o.status = 'CONFIRMED' " +
+           "WHERE o.status IN ('PAID', 'SHIPPED') " +
            "GROUP BY c.name")
     List<ProfitabilityReportDTO> getProfitabilityByCategory();
 }
