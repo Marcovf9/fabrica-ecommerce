@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { adminService, catalogService } from '../services/api';
 import type { Product, ProfitabilityReport, Order, OrderDetail } from '../types';
 import Swal from 'sweetalert2';
+// NUEVO: Importaciones para los gráficos
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -194,7 +196,7 @@ export default function AdminPage() {
       try {
         await adminService.deleteProduct(product.id);
         Swal.fire({ icon: 'success', title: 'Desactivado', text: 'El producto ha sido dado de baja.', timer: 2000, showConfirmButton: false });
-        loadProducts(); // Recarga la lista
+        loadProducts(); 
       } catch (error) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo desactivar el producto.' });
       }
@@ -214,8 +216,11 @@ export default function AdminPage() {
     );
   }
 
+  // Paleta de colores para el gráfico de torta
+  const COLORS = ['#2980b9', '#e67e22', '#27ae60', '#8e44ad', '#f1c40f'];
+
   return (
-    <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '30px', fontFamily: 'sans-serif', maxWidth: '1600px', margin: '0 auto' }}>
       <style>{`
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -224,6 +229,52 @@ export default function AdminPage() {
 
       <h1 style={{ color: '#2c3e50' }}>⚙️ Panel de Control de Fábrica</h1>
       <hr style={{ marginBottom: '30px' }}/>
+
+      {/* NUEVO: PANEL DE GRÁFICOS VISUALES */}
+      {report.length > 0 && (
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
+          
+          <div style={{ ...cardStyle, flex: 2, minWidth: '500px', height: '380px' }}>
+            <h3 style={{ marginTop: 0 }}>📈 Comparativa: Ingresos vs Costos Operativos</h3>
+            <ResponsiveContainer width="100%" height="90%">
+              <BarChart data={report} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="category" />
+                <YAxis tickFormatter={(val) => `$${(val / 1000)}k`} />
+                <RechartsTooltip formatter={(value: number) => `$${value.toLocaleString('es-AR')}`} />
+                <Legend />
+                <Bar dataKey="totalRevenue" name="Ingresos Brutos" fill="#2ecc71" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="totalCost" name="Costo de Materiales" fill="#e74c3c" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={{ ...cardStyle, flex: 1, minWidth: '300px', height: '380px' }}>
+            <h3 style={{ marginTop: 0, textAlign: 'center' }}>💰 Origen de Ganancia Neta</h3>
+            <ResponsiveContainer width="100%" height="90%">
+              <PieChart>
+                <Pie 
+                  data={report} 
+                  dataKey="netProfit" 
+                  nameKey="category" 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={60}
+                  outerRadius={90} 
+                  paddingAngle={5}
+                >
+                  {report.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip formatter={(value: number) => `$${value.toLocaleString('es-AR')}`} />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         
@@ -262,7 +313,7 @@ export default function AdminPage() {
             </form>
           </div>
 
-          {/* NUEVA SECCIÓN: Listado de Catálogo para Editar Precios */}
+          {/* Listado de Catálogo para Editar Precios */}
           <div style={{...cardStyle, borderTop: '4px solid #9b59b6'}}>
             <h3>📝 Catálogo Activo (Precios)</h3>
             <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
@@ -285,7 +336,7 @@ export default function AdminPage() {
                             Editar
                           </button>
                           <button onClick={() => handleDeleteProduct(p)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                            Dar de baja
+                            Baja
                           </button>
                         </div>
                       </td>
@@ -301,7 +352,7 @@ export default function AdminPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1.5, minWidth: '400px' }}>
           
           <div style={{ ...cardStyle, borderTop: '4px solid #f39c12' }}>
-            <h3>📊 Desempeño Financiero</h3>
+            <h3>📊 Tablero Financiero Detallado</h3>
             {report.length === 0 ? <p>No hay ventas confirmadas.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
                 <thead>
