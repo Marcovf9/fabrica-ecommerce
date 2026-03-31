@@ -8,6 +8,23 @@ export const apiClient = axios.create({
     }
 });
 
+apiClient.interceptors.request.use((config) => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
+
+export const authService = {
+    login: async (credentials: { username: string, password: string }) => {
+        const response = await apiClient.post('/auth/login', credentials);
+        return response.data; // Retorna { token: "eyJhb..." }
+    }
+};
+
 export const catalogService = {
     getCatalog: async () => {
         const response = await apiClient.get<Product[]>('/products/catalog');

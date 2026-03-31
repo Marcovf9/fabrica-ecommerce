@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { adminService, catalogService } from '../services/api';
+import { adminService, catalogService, authService } from '../services/api';
 import type { Product, ProfitabilityReport, Order, OrderDetail } from '../types';
 import Swal from 'sweetalert2';
-// NUEVO: Importaciones para los gráficos
+// Importaciones para los gráficos
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [pin, setPin] = useState('');
+  // NUEVO: Estados para credenciales reales
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   
   const [products, setProducts] = useState<Product[]>([]);
   const [report, setReport] = useState<ProfitabilityReport[]>([]);
@@ -18,6 +20,14 @@ export default function AdminPage() {
   const [newProduct, setNewProduct] = useState({ categoryId: 1, name: '', salePrice: '' });
   const [newBatch, setNewBatch] = useState({ productId: 0, quantityProduced: '', totalBatchCost: '' });
 
+  // NUEVO: Verifica si hay un token válido al cargar la página
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
       loadProducts();
@@ -25,6 +35,16 @@ export default function AdminPage() {
       loadOrders();
     }
   }, [isAuthenticated]);
+
+  // NUEVO: Manejador centralizado de errores de API (intercepta 401/403)
+  const handleApiError = (error: any, defaultMessage: string = 'Ocurrió un error') => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      handleLogout();
+      Swal.fire({ icon: 'error', title: 'Sesión expirada', text: 'Por favor, ingresa nuevamente.' });
+    } else {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || defaultMessage });
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -54,13 +74,25 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  // NUEVO: Lógica de Login contra el backend
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === '1234') {
+    try {
+      const data = await authService.login({ username, password });
+      localStorage.setItem('admin_token', data.token); // Guardamos la llave
       setIsAuthenticated(true);
-    } else {
-      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'El PIN ingresado es incorrecto.', timer: 2000, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: 'Acceso Autorizado', timer: 1500, showConfirmButton: false });
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Credenciales inválidas.' });
     }
+  };
+
+  // NUEVO: Lógica de Logout
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    setIsAuthenticated(false);
+    setUsername('');
+    setPassword('');
   };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -74,7 +106,7 @@ export default function AdminPage() {
       setNewProduct({ categoryId: 1, name: '', salePrice: '' });
       loadProducts();
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo crear el producto.' });
+      handleApiError(error, 'No se pudo crear el producto.');
     }
   };
 
@@ -89,7 +121,7 @@ export default function AdminPage() {
       loadProducts();
       loadReport();
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo registrar el lote.' });
+      handleApiError(error, 'No se pudo registrar el lote.');
     }
   };
 
@@ -111,7 +143,7 @@ export default function AdminPage() {
         Swal.fire({ icon: 'success', title: '¡Confirmado!', text: 'Stock y costos actualizados exitosamente.', timer: 2000, showConfirmButton: false });
         loadOrders(); loadProducts(); loadReport(); 
       } catch (error: any) {
-        Swal.fire({ icon: 'error', title: 'Problema de Stock', text: error.response?.data?.message || 'No se pudo confirmar el pedido.' });
+        handleApiError(error, 'No se pudo confirmar el pedido.');
       }
     }
   };
@@ -134,7 +166,7 @@ export default function AdminPage() {
         Swal.fire({ icon: 'success', title: 'Cancelado', text: 'El stock ha vuelto al galpón.', timer: 2000, showConfirmButton: false });
         loadOrders(); loadProducts(); 
       } catch (error: any) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cancelar el pedido.' });
+        handleApiError(error, 'No se pudo cancelar el pedido.');
       }
     }
   };
@@ -144,7 +176,7 @@ export default function AdminPage() {
       const details = await adminService.getOrderDetails(orderCode);
       setSelectedOrderDetails(details);
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudieron cargar los detalles del remito.' });
+      handleApiError(error, 'No se pudieron cargar los detalles del remito.');
     }
   };
 
@@ -176,7 +208,7 @@ export default function AdminPage() {
         Swal.fire({ icon: 'success', title: '¡Actualizado!', text: 'El precio ha sido modificado exitosamente.', timer: 2000, showConfirmButton: false });
         loadProducts(); 
       } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar el precio.' });
+        handleApiError(error, 'No se pudo actualizar el precio.');
       }
     }
   };
@@ -198,19 +230,20 @@ export default function AdminPage() {
         Swal.fire({ icon: 'success', title: 'Desactivado', text: 'El producto ha sido dado de baja.', timer: 2000, showConfirmButton: false });
         loadProducts(); 
       } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo desactivar el producto.' });
+        handleApiError(error, 'No se pudo desactivar el producto.');
       }
     }
   };
 
+  // NUEVO: Vista de Login actualizada
   if (!isAuthenticated) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '100px', fontFamily: 'sans-serif' }}>
-        <form onSubmit={handleLogin} style={{ border: '1px solid #ccc', padding: '30px', borderRadius: '8px', textAlign: 'center' }}>
-          <h2>Acceso Restringido</h2>
-          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} style={{ padding: '10px', fontSize: '1.2rem', width: '150px', textAlign: 'center', marginBottom: '15px' }} autoFocus/>
-          <br/>
-          <button type="submit" style={btnStyle('#2c3e50')}>Ingresar</button>
+        <form onSubmit={handleLogin} style={{ border: '1px solid #ccc', padding: '40px', borderRadius: '8px', textAlign: 'center', backgroundColor: '#fff', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <h2 style={{ color: '#2c3e50', marginBottom: '20px' }}>🔐 Acceso Administrativo</h2>
+          <input required type="text" placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} autoFocus/>
+          <input required type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}/>
+          <button type="submit" style={btnStyle('#2980b9')}>Iniciar Sesión</button>
         </form>
       </div>
     );
@@ -227,10 +260,16 @@ export default function AdminPage() {
         input[type=number] { -moz-appearance: textfield; }
       `}</style>
 
-      <h1 style={{ color: '#2c3e50' }}>⚙️ Panel de Control de Fábrica</h1>
+      {/* NUEVO: Encabezado con botón de cerrar sesión */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <h1 style={{ color: '#2c3e50', margin: 0 }}>⚙️ Panel de Control de Fábrica</h1>
+        <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Cerrar Sesión
+        </button>
+      </div>
       <hr style={{ marginBottom: '30px' }}/>
 
-      {/* NUEVO: PANEL DE GRÁFICOS VISUALES */}
+      {/* PANEL DE GRÁFICOS VISUALES */}
       {report.length > 0 && (
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           
