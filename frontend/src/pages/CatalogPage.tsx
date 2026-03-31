@@ -8,21 +8,17 @@ function CatalogPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Memoria del carrito
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('fabrica_cart');
     return savedCart ? JSON.parse(savedCart) : [];
   });
-
-  useEffect(() => {
-    localStorage.setItem('fabrica_cart', JSON.stringify(cart));
-  }, [cart]);
   
-  const [customer, setCustomer] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: ''
-  })
+  const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+
+  // NUEVO: Estados para Búsqueda y Filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Todas');
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -39,6 +35,10 @@ function CatalogPage() {
     fetchCatalog()
   }, [])
 
+  useEffect(() => {
+    localStorage.setItem('fabrica_cart', JSON.stringify(cart));
+  }, [cart]);
+
   const addToCart = (product: Product) => {
     if (product.availableStock <= 0) {
       return Swal.fire({ icon: 'error', title: 'Agotado', text: `El producto ${product.name} no tiene stock disponible.` });
@@ -52,9 +52,7 @@ function CatalogPage() {
           return prevCart;
         }
         Swal.fire({ icon: 'success', title: 'Agregado al carrito', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
-        return prevCart.map(item => 
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        )
+        return prevCart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
       }
       Swal.fire({ icon: 'success', title: 'Agregado al carrito', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
       return [...prevCart, { product, quantity: 1 }]
@@ -65,9 +63,7 @@ function CatalogPage() {
     setCart((prevCart) => {
       const existing = prevCart.find(item => item.product.id === productId);
       if (existing && existing.quantity > 1) {
-        return prevCart.map(item =>
-          item.product.id === productId ? { ...item, quantity: item.quantity - 1 } : item
-        );
+        return prevCart.map(item => item.product.id === productId ? { ...item, quantity: item.quantity - 1 } : item );
       }
       return prevCart.filter(item => item.product.id !== productId);
     });
@@ -83,7 +79,6 @@ function CatalogPage() {
 
   const submitOrder = async () => {
     if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'Carrito vacío', text: 'Agrega productos antes de generar el pedido.' });
-    
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim()) {
       return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos del cliente son obligatorios.' });
     }
@@ -104,14 +99,7 @@ function CatalogPage() {
 
     try {
       const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
-
-      const payload = {
-        customerContact: formattedContact,
-        items: cart.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity
-        }))
-      };
+      const payload = { customerContact: formattedContact, items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })) };
       
       const response = await orderService.createPendingOrder(payload);
       
@@ -135,41 +123,86 @@ function CatalogPage() {
   if (error) return <h2 style={{ padding: '20px', color: '#e74c3c' }}>{error}</h2>
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0)
-  const uniqueCategories = Array.from(new Set(products.map(p => p.categoryName)))
+  
+  const allCategories = ['Todas', ...Array.from(new Set(products.map(p => p.categoryName)))];
+  
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'Todas' || p.categoryName === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif', display: 'flex', gap: '40px', maxWidth: '1400px', margin: '0 auto' }}>
       
       <div style={{ flex: 2 }}>
         <h1>Catálogo de Productos</h1>
-        {uniqueCategories.map(category => (
-          <div key={category} style={{ marginBottom: '40px' }}>
-            <h2 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>{category}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
-              {products.filter(p => p.categoryName === category).map((product) => (
-                <div key={product.id} style={{ border: '1px solid #e0e0e0', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                  <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{product.name}</h3>
-                  <h2 style={{ color: '#27ae60', margin: '15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
-                  <p style={{ color: product.availableStock > 0 ? '#3498db' : '#e74c3c', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                    {product.availableStock > 0 ? `Stock: ${product.availableStock} unid.` : 'Agotado'}
-                  </p>
-                  <button 
-                    onClick={() => addToCart(product)}
-                    disabled={product.availableStock <= 0}
-                    style={{ 
-                      padding: '10px', width: '100%', cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
-                      backgroundColor: product.availableStock > 0 ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' 
-                    }}>
-                    {product.availableStock > 0 ? 'Agregar al pedido' : 'Sin Stock'}
-                  </button>
-                </div>
-              ))}
-            </div>
+        
+        {/* BARRA DE BÚSQUEDA Y FILTROS */}
+        <div style={{ marginBottom: '30px', backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+          <input 
+            type="text" 
+            placeholder="🔍 Buscar producto o categoria..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.05rem', marginBottom: '15px', boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {allCategories.map(cat => (
+              <button 
+                key={cat} 
+                onClick={() => setSelectedCategory(cat)}
+                style={{ 
+                  padding: '8px 16px', 
+                  borderRadius: '20px', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  fontWeight: 'bold',
+                  backgroundColor: selectedCategory === cat ? '#2c3e50' : '#e0e0e0',
+                  color: selectedCategory === cat ? 'white' : '#333',
+                  transition: 'background-color 0.2s'
+                }}>
+                {cat}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {filteredProducts.length === 0 ? (
+          <p style={{ fontSize: '1.2rem', color: '#7f8c8d', textAlign: 'center', marginTop: '50px' }}>No se encontraron productos con esos filtros.</p>
+        ) : (
+          displayCategories.map(category => (
+            <div key={category} style={{ marginBottom: '40px' }}>
+              <h2 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>{category}</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                {filteredProducts.filter(p => p.categoryName === category).map((product) => (
+                  <div key={product.id} style={{ border: '1px solid #e0e0e0', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{product.name}</h3>
+                    <h2 style={{ color: '#27ae60', margin: '15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
+                    <p style={{ color: product.availableStock > 0 ? '#3498db' : '#e74c3c', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                      {product.availableStock > 0 ? `Stock: ${product.availableStock} unid.` : 'Agotado'}
+                    </p>
+                    <button 
+                      onClick={() => addToCart(product)}
+                      disabled={product.availableStock <= 0}
+                      style={{ 
+                        padding: '10px', width: '100%', cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
+                        backgroundColor: product.availableStock > 0 ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' 
+                      }}>
+                      {product.availableStock > 0 ? 'Agregar al pedido' : 'Sin Stock'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '25px', borderRadius: '12px', height: 'fit-content', border: '1px solid #e9ecef' }}>
+      <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '25px', borderRadius: '12px', height: 'fit-content', border: '1px solid #e9ecef', position: 'sticky', top: '20px' }}>
+        {/* ... (El resto del carrito queda exactamente igual) ... */}
         <h2 style={{ marginTop: 0 }}>Resumen del Pedido</h2>
         <hr style={{ borderColor: '#dee2e6', marginBottom: '20px' }} />
         
