@@ -19,6 +19,10 @@ export const orderService = {
     createPendingOrder: async (orderData: OrderRequestDTO) => {
         const response = await apiClient.post('/orders', orderData);
         return response.data;
+    },
+    getOrderDetails: async (orderCode: string) => {
+        const response = await apiClient.get<OrderDetail>(`/orders/${orderCode}`);
+        return response.data;
     }
 };
 
