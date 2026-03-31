@@ -208,6 +208,21 @@ export default function AdminPage() {
     }
   };
 
+  const handleDownloadPdf = async (orderCode: string) => {
+    try {
+      const blob = await adminService.downloadOrderPdf(orderCode);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `remito_${orderCode}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      handleApiError(error, 'No se pudo descargar el remito PDF.');
+    }
+  };
+
   const handleEditPrice = async (product: Product) => {
     const { value: newPrice } = await Swal.fire({
       title: `Modificar Precio`,
@@ -559,9 +574,14 @@ export default function AdminPage() {
               Total: ${selectedOrderDetails.totalSaleAmount.toLocaleString('es-AR')}
             </h2>
             
-            <button onClick={() => setSelectedOrderDetails(null)} style={{ ...btnStyle('#95a5a6'), marginTop: '20px' }}>
-              Cerrar Remito
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => handleDownloadPdf(selectedOrderDetails.orderCode)} style={{ ...btnStyle('#2980b9'), marginTop: 0 }}>
+                🖨️ Descargar Remito PDF
+              </button>
+              <button onClick={() => setSelectedOrderDetails(null)} style={{ ...btnStyle('#95a5a6'), marginTop: 0 }}>
+                Cerrar Ventana
+              </button>
+            </div>
           </div>
         </div>
       )}

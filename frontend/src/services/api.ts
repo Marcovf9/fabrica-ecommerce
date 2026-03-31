@@ -72,7 +72,6 @@ export const adminService = {
         const response = await apiClient.post(`/orders/${orderCode}/confirm`);
         return response.data;
     },
-    // NUEVO: Llamada a la API para despachar
     shipOrder: async (orderCode: string) => {
         const response = await apiClient.post(`/orders/${orderCode}/ship`);
         return response.data;
@@ -83,6 +82,12 @@ export const adminService = {
     },
     getOrderDetails: async (orderCode: string) => {
         const response = await apiClient.get<OrderDetail>(`/orders/${orderCode}`);
+        return response.data;
+    },
+    downloadOrderPdf: async (orderCode: string) => {
+        const response = await apiClient.get(`/orders/${orderCode}/pdf`, {
+            responseType: 'blob'
+        });
         return response.data;
     },
     deleteProduct: async (id: number) => {

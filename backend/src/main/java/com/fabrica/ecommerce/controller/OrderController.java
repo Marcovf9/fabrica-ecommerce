@@ -3,8 +3,10 @@ package com.fabrica.ecommerce.controller;
 import com.fabrica.ecommerce.dto.order.OrderRequestDTO;
 import com.fabrica.ecommerce.model.Order;
 import com.fabrica.ecommerce.service.OrderService;
+import com.fabrica.ecommerce.service.PdfService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final PdfService pdfService;
 
     @PostMapping
     public ResponseEntity<Order> createOrder(@Valid @RequestBody OrderRequestDTO request) {
@@ -50,5 +53,17 @@ public class OrderController {
     @GetMapping("/{orderCode}")
     public ResponseEntity<com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO> getOrderDetails(@PathVariable String orderCode) {
         return ResponseEntity.ok(orderService.getOrderDetails(orderCode));
+    }
+
+    @GetMapping("/{orderCode}/pdf")
+    public ResponseEntity<byte[]> getOrderPdf(@PathVariable String orderCode) {
+        com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO orderDetails = orderService.getOrderDetails(orderCode);
+        byte[] pdfBytes = pdfService.generateOrderReceipt(orderDetails);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("inline", "remito_" + orderCode + ".pdf"); 
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
     }
 }
