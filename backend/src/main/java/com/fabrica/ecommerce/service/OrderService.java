@@ -69,11 +69,20 @@ public class OrderService {
 
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
+            String trackingUrl = "http://localhost:5173/tracking?code=" + savedOrder.getOrderCode();
+
             emailService.sendHtmlEmail(email, "Pedido Registrado #" + savedOrder.getOrderCode(),
                 "<div style='font-family: Arial, sans-serif; color: #333;'>" +
                 "<h2 style='color: #2c3e50;'>¡Hola! Recibimos tu pedido " + savedOrder.getOrderCode() + "</h2>" +
                 "<p>Hemos registrado tu solicitud exitosamente. Tu stock ha sido reservado.</p>" +
                 "<p>Por favor contáctanos por WhatsApp para coordinar el pago por un total de <b>$" + totalSale + "</b>.</p>" +
+                "<br/>" +
+                "<div style='margin-top: 20px;'>" +
+                "  <a href='" + trackingUrl + "' style='background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;'>" +
+                "    Ver Seguimiento de mi Pedido" +
+                "  </a>" +
+                "</div>" +
+                "<p style='font-size: 0.8rem; color: #7f8c8d; margin-top: 15px;'>También puedes ingresar manualmente el código <b>" + savedOrder.getOrderCode() + "</b> en nuestra web.</p>" +
                 "</div>");
         }
 
@@ -133,20 +142,44 @@ public class OrderService {
             orderItemRepository.save(item);
 
             totalOrderCost = totalOrderCost.add(itemTotalCost);
+
+            // AUDITORÍA DE STOCK CRÍTICO
+            long remainingPhysicalStock = inventoryBatchRepository
+                    .findAvailableBatchesForProduct(item.getProduct().getId())
+                    .stream()
+                    .mapToLong(InventoryBatch::getQuantityRemaining)
+                    .sum();
+
+            if (remainingPhysicalStock < 5) {
+                emailService.sendHtmlEmail("ritualparrillas@gmail.com", 
+                    "⚠️ URGENTE: Stock Crítico - SKU: " + item.getProduct().getSku(),
+                    "<h2 style='color: #e74c3c;'>Alerta de Producción</h2>" +
+                    "<p>El producto <b>" + item.getProduct().getName() + "</b> (SKU: " + item.getProduct().getSku() + ") " +
+                    "ha perforado el umbral mínimo de seguridad tras la orden " + order.getOrderCode() + ".</p>" +
+                    "<p>Stock físico restante en galpón: <b>" + remainingPhysicalStock + " unidades.</b></p>" +
+                    "<p>Se requiere activar la matriz correspondiente en el próximo turno de fundición.</p>");
+            }
         }
 
         order.setTotalCostAmount(totalOrderCost);
         order.setStatus(Order.OrderStatus.PAID);
         Order savedOrder = orderRepository.save(order);
 
-        // DISPARO DE CORREO: Pago Confirmado
+        /// DISPARO DE CORREO: Pago Confirmado
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
+            String trackingUrl = "http://localhost:5173/tracking?code=" + savedOrder.getOrderCode();
             emailService.sendHtmlEmail(email, "Pago Confirmado #" + savedOrder.getOrderCode(),
                 "<div style='font-family: Arial, sans-serif; color: #333;'>" +
                 "<h2 style='color: #27ae60;'>¡Pago recibido!</h2>" +
                 "<p>Hemos registrado el pago de tu pedido <b>" + savedOrder.getOrderCode() + "</b> de manera exitosa.</p>" +
                 "<p>En breve procederemos a prepararlo para su despacho. Te notificaremos cuando esté en camino.</p>" +
+                "<br/>" +
+                "<div style='margin-top: 20px;'>" +
+                "  <a href='" + trackingUrl + "' style='background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;'>" +
+                "    Ver Seguimiento de mi Pedido" +
+                "  </a>" +
+                "</div>" +
                 "</div>");
         }
 
@@ -168,11 +201,18 @@ public class OrderService {
         // DISPARO DE CORREO: Despachado
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
+            String trackingUrl = "http://localhost:5173/tracking?code=" + savedOrder.getOrderCode();
             emailService.sendHtmlEmail(email, "Pedido Despachado #" + savedOrder.getOrderCode(),
                 "<div style='font-family: Arial, sans-serif; color: #333;'>" +
                 "<h2 style='color: #2980b9;'>Tu pedido está en camino 🚚</h2>" +
                 "<p>El pedido <b>" + savedOrder.getOrderCode() + "</b> ha salido de nuestras instalaciones.</p>" +
                 "<p>¡Gracias por confiar en nuestra fábrica!</p>" +
+                "<br/>" +
+                "<div style='margin-top: 20px;'>" +
+                "  <a href='" + trackingUrl + "' style='background-color: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;'>" +
+                "    Ver Seguimiento de mi Pedido" +
+                "  </a>" +
+                "</div>" +
                 "</div>");
         }
 

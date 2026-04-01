@@ -1,23 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom'; // NUEVA IMPORTACIÓN
 import { orderService } from '../services/api';
 import type { OrderDetail } from '../types';
 import Swal from 'sweetalert2';
 
 export default function TrackingPage() {
+  const [searchParams] = useSearchParams();
   const [orderCode, setOrderCode] = useState('');
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orderCode.trim()) return;
+  // Auto-cargar si la URL trae el parámetro
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl) {
+      setOrderCode(codeFromUrl);
+      fetchOrder(codeFromUrl);
+    }
+  }, [searchParams]);
 
+  const fetchOrder = async (codeToSearch: string) => {
+    if (!codeToSearch.trim()) return;
     setLoading(true);
     setOrder(null);
-    
     try {
-      // Forzamos el formato PED-XXXXXX por si el usuario lo escribe en minúsculas
-      const formattedCode = orderCode.trim().toUpperCase();
+      const formattedCode = codeToSearch.trim().toUpperCase();
       const data = await orderService.getOrderDetails(formattedCode);
       setOrder(data);
     } catch (error: any) {
@@ -31,12 +38,19 @@ export default function TrackingPage() {
     }
   };
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchOrder(orderCode);
+  };
+
+  // ESTADOS ALINEADOS ESTRICTAMENTE CON EL BACKEND (Order.OrderStatus)
   const getStatusConfig = (status: string) => {
     switch(status) {
       case 'PENDING': return { color: '#f1c40f', text: 'PENDIENTE', desc: 'Recibimos tu pedido. Estamos verificando el stock antes de procesar el cobro.' };
-      case 'CONFIRMED': return { color: '#27ae60', text: 'CONFIRMADO', desc: '¡Pago aprobado! Tu pedido está siendo preparado en el galpón para su despacho.' };
+      case 'PAID': return { color: '#27ae60', text: 'PAGADO', desc: '¡Pago aprobado! Tu pedido está siendo preparado en el galpón para su despacho.' };
+      case 'SHIPPED': return { color: '#2980b9', text: 'ENVIADO', desc: '¡Tu pedido está en camino! Ha salido de nuestras instalaciones.' };
       case 'CANCELLED': return { color: '#e74c3c', text: 'CANCELADO', desc: 'El pedido fue cancelado. Si ya habías pagado, el reembolso está en proceso.' };
-      default: return { color: '#95a5a6', text: 'DESCONOCIDO', desc: '' };
+      default: return { color: '#95a5a6', text: status, desc: 'Estado no reconocido.' };
     }
   };
 
