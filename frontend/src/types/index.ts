@@ -4,10 +4,11 @@ export interface Product {
     categoryName: string;
     sku: string;
     name: string;
+    description: string;
     salePrice: number;
     availableStock: number;
     isActive: boolean;
-    imageUrl?: string;
+    imageUrls: string[];
 }
 
 export interface CartItem {

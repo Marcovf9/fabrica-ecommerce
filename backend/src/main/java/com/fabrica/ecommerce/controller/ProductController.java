@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -39,6 +40,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.getActiveCatalog());
     }
 
+
     /**
      * Endpoint Privado: Crear un nuevo producto
      * POST /api/products
@@ -48,10 +50,11 @@ public class ProductController {
             @RequestParam("categoryId") Long categoryId,
             @RequestParam("sku") String sku,
             @RequestParam("name") String name,
+            @RequestParam(value = "description", required = false) String description,
             @RequestParam("salePrice") BigDecimal salePrice,
-            @RequestParam(value = "image", required = false) MultipartFile image) {
+            @RequestParam(value = "images", required = false) MultipartFile[] images) { // CORREGIDO A ARREGLO
             
-        return new ResponseEntity<>(productService.createProduct(categoryId, sku, name, salePrice, image), HttpStatus.CREATED);
+        return new ResponseEntity<>(productService.createProduct(categoryId, sku, name, description, salePrice, images), HttpStatus.CREATED);
     }
 
     /**
@@ -61,9 +64,15 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequestDTO request) {
         Product p = productService.updateProduct(id, request);
-        // LÍNEA CORREGIDA: Se agregó p.getImageUrl() como séptimo parámetro
+        
+        // Extraer las URLs para el DTO de respuesta
+        List<String> imageUrls = p.getImages().stream()
+                .map(com.fabrica.ecommerce.model.ProductImage::getImageUrl)
+                .collect(Collectors.toList());
+
+        // Construcción actualizada con descripción y lista de URLs
         return ResponseEntity.ok(new ProductResponseDTO(
-                p.getId(), p.getSku(), p.getName(), p.getSalePrice(), p.getCategory().getName(), 0L, p.getImageUrl()
+                p.getId(), p.getSku(), p.getName(), p.getDescription(), p.getSalePrice(), p.getCategory().getName(), 0L, imageUrls
         ));
     }
     

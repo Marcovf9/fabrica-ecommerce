@@ -3,6 +3,8 @@ package com.fabrica.ecommerce.model;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -29,6 +31,9 @@ public class Product {
     @Column(nullable = false)
     private Boolean isActive = true;
 
-    @Column(name = "image_url")
-    private String imageUrl;
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProductImage> images = new ArrayList<>();
 }

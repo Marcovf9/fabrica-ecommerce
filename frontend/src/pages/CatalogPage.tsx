@@ -14,9 +14,13 @@ function CatalogPage() {
   });
   
   const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '' })
-
+  const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
+  
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -24,7 +28,6 @@ function CatalogPage() {
         const data = await catalogService.getCatalog()
         setProducts(data)
       } catch (err) {
-        console.error(err)
         setError("Error al cargar el catálogo de productos.")
       } finally {
         setLoading(false)
@@ -39,20 +42,20 @@ function CatalogPage() {
 
   const addToCart = (product: Product) => {
     if (product.availableStock <= 0) {
-      return Swal.fire({ icon: 'error', title: 'Agotado', text: `El producto ${product.name} no tiene stock disponible.` });
+      return Swal.fire({ icon: 'error', title: 'Agotado', background: '#3A322D', color: '#F5EFE6', text: `El producto ${product.name} no tiene stock disponible.` });
     }
 
     setCart((prevCart) => {
       const existing = prevCart.find(item => item.product.id === product.id)
       if (existing) {
         if (existing.quantity >= product.availableStock) {
-          Swal.fire({ icon: 'warning', title: 'Límite de stock', text: `Solo quedan ${product.availableStock} unidades de ${product.name}.`, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
+          Swal.fire({ icon: 'warning', title: 'Límite de stock', background: '#3A322D', color: '#F5EFE6', text: `Solo quedan ${product.availableStock} unidades.`, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
           return prevCart;
         }
-        Swal.fire({ icon: 'success', title: 'Agregado al carrito', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: 'Agregado al carrito', background: '#3A322D', color: '#F5EFE6', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
         return prevCart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
       }
-      Swal.fire({ icon: 'success', title: 'Agregado al carrito', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: 'success', title: 'Agregado al carrito', background: '#3A322D', color: '#F5EFE6', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
       return [...prevCart, { product, quantity: 1 }]
     })
   }
@@ -72,29 +75,30 @@ function CatalogPage() {
   }
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCustomer({ ...customer, [e.target.name]: e.target.value })
+    const { name, value } = e.target;
+    setCustomer({ ...customer, [name]: value });
+
+    let errorMsg = '';
+    if ((name === 'firstName' || name === 'lastName') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
+      errorMsg = 'Solo debe contener letras.';
+    } else if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      errorMsg = 'Formato de correo inválido.';
+    } else if (name === 'phone' && value && !/^[0-9]+$/.test(value)) {
+      errorMsg = 'Solo debe contener números.';
+    }
+    setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
   }
 
   const submitOrder = async () => {
-    if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'Carrito vacío', text: 'Agrega productos antes de generar el pedido.' });
+    if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'Carrito vacío', background: '#3A322D', color: '#F5EFE6' });
+    
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim()) {
-      return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos del cliente son obligatorios.' });
+      return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos son obligatorios.', background: '#3A322D', color: '#F5EFE6' });
+    }
+    if (formErrors.firstName || formErrors.lastName || formErrors.email || formErrors.phone) {
+      return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'Corrige los errores marcados en rojo.', background: '#3A322D', color: '#F5EFE6' });
     }
     
-    const nameRegex = /^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/; 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
-    const phoneRegex = /^[0-9]+$/; 
-    
-    if (!nameRegex.test(customer.firstName) || !nameRegex.test(customer.lastName)) {
-      return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'El nombre y apellido solo deben contener letras.' });
-    }
-    if (!emailRegex.test(customer.email)) {
-      return Swal.fire({ icon: 'error', title: 'Correo inválido', text: 'Por favor, ingresa un correo electrónico válido.' });
-    }
-    if (!phoneRegex.test(customer.phone)) {
-      return Swal.fire({ icon: 'error', title: 'Teléfono inválido', text: 'El teléfono solo debe contener números (sin espacios ni guiones).' });
-    }
-
     try {
       const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
       const payload = { customerContact: formattedContact, items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })) };
@@ -102,37 +106,43 @@ function CatalogPage() {
       const response = await orderService.createPendingOrder(payload);
       const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
       
-      const waMessage = `Hola, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por un total de $${cartTotal.toLocaleString('es-AR')}. Quiero coordinar el pago!`;
+      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por $${cartTotal.toLocaleString('es-AR')}. Quiero coordinar el pago.`;
       const waUrl = `https://wa.me/5493517150510?text=${encodeURIComponent(waMessage)}`;
 
       Swal.fire({
         icon: 'success',
         title: '¡Pedido Registrado!',
-        html: `Tu código de seguimiento es: <b>${response.orderCode}</b><br/><br/>El stock ha sido reservado. Por favor, contáctanos por WhatsApp para realizar el pago y confirmar la operación.`,
-        confirmButtonColor: '#25D366',
-        confirmButtonText: 'Coordinar Pago (WhatsApp)',
-        showCancelButton: true,
-        cancelButtonText: 'Cerrar'
+        html: `Tu código de seguimiento: <b style="color:#D67026">${response.orderCode}</b><br/><br/>El stock ha sido reservado. Escríbenos por WhatsApp para coordinar el pago.`,
+        background: '#2B2522',
+        color: '#F5EFE6',
+        confirmButtonColor: '#27ae60',
+        confirmButtonText: 'Coordinar Pago (WhatsApp)'
       }).then((result) => {
-        if (result.isConfirmed) {
-          window.open(waUrl, '_blank');
-        }
+        if (result.isConfirmed) window.open(waUrl, '_blank');
       });
       
       setCart([]);
-      localStorage.removeItem('fabrica_cart');
       setCustomer({ firstName: '', lastName: '', email: '', phone: '' });
     } catch (err) {
-      console.error(err);
-      Swal.fire({ icon: 'error', title: 'Error del sistema', text: 'Hubo un problema al generar el pedido. Verifica tu conexión.' });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al generar el pedido.', background: '#3A322D', color: '#F5EFE6' });
     }
   };
 
-  if (loading) return <h2 style={{ padding: '20px' }}>Cargando inventario...</h2>
-  if (error) return <h2 style={{ padding: '20px', color: '#e74c3c' }}>{error}</h2>
+  const openProductModal = (product: Product) => {
+    setSelectedProduct(product);
+    setCurrentImageIndex(0);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeProductModal = () => {
+    setSelectedProduct(null);
+    document.body.style.overflow = 'auto';
+  };
+
+  if (loading) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#F5EFE6', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>Cargando Catálogo...</h2></div>
+  if (error) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#e74c3c', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>{error}</h2></div>
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0)
-  
   const allCategories = ['Todas', ...Array.from(new Set(products.map(p => p.categoryName)))];
   
   const filteredProducts = products.filter(p => {
@@ -144,20 +154,16 @@ function CatalogPage() {
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', display: 'flex', gap: '40px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '40px 20px', display: 'flex', gap: '40px', maxWidth: '1400px', margin: '0 auto', flexWrap: 'wrap' }}>
       
-      <div style={{ flex: 2 }}>
-        <h1>Catálogo de Productos</h1>
-        
-        <div style={{ marginBottom: '30px', backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+      <div style={{ flex: '1 1 800px' }}>
+        <div style={{ marginBottom: '30px', backgroundColor: '#3A322D', padding: '20px', borderRadius: '4px', border: '1px solid #51433A' }}>
           <input 
             type="search" 
-            name="catalogSearch"
-            autoComplete="off"
-            placeholder="🔍 Buscar producto o categoria..." 
+            placeholder="🔍 Buscar modelo..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1.05rem', marginBottom: '15px', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #68594D', backgroundColor: '#2B2522', color: '#F5EFE6', fontSize: '1.05rem', marginBottom: '15px', boxSizing: 'border-box' }}
           />
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {allCategories.map(cat => (
@@ -165,14 +171,11 @@ function CatalogPage() {
                 key={cat} 
                 onClick={() => setSelectedCategory(cat)}
                 style={{ 
-                  padding: '8px 16px', 
-                  borderRadius: '20px', 
-                  border: 'none', 
-                  cursor: 'pointer', 
-                  fontWeight: 'bold',
-                  backgroundColor: selectedCategory === cat ? '#2c3e50' : '#e0e0e0',
-                  color: selectedCategory === cat ? 'white' : '#333',
-                  transition: 'background-color 0.2s'
+                  padding: '8px 16px', borderRadius: '2px', border: `1px solid ${selectedCategory === cat ? '#D67026' : '#68594D'}`, 
+                  cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem',
+                  backgroundColor: selectedCategory === cat ? '#D67026' : 'transparent',
+                  color: selectedCategory === cat ? '#F5EFE6' : '#B8B0A3',
+                  transition: 'all 0.2s'
                 }}>
                 {cat}
               </button>
@@ -181,40 +184,39 @@ function CatalogPage() {
         </div>
 
         {filteredProducts.length === 0 ? (
-          <p style={{ fontSize: '1.2rem', color: '#7f8c8d', textAlign: 'center', marginTop: '50px' }}>No se encontraron productos con esos filtros.</p>
+          <p style={{ textAlign: 'center', marginTop: '50px', color: '#B8B0A3' }}>No hay inventario que coincida con la búsqueda.</p>
         ) : (
           displayCategories.map(category => (
-            <div key={category} style={{ marginBottom: '40px' }}>
-              <h2 style={{ color: '#2c3e50', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>{category}</h2>
+            <div key={category} style={{ marginBottom: '50px' }}>
+              <h2 style={{ color: '#F5EFE6', borderBottom: '1px solid #51433A', paddingBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>{category}</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
                 {filteredProducts.filter(p => p.categoryName === category).map((product) => (
-                  <div key={product.id} style={{ border: '1px solid #e0e0e0', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                  <div style={{ height: '220px', backgroundColor: '#f8f9fa', borderRadius: '4px', marginBottom: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', border: '1px solid #eee' }}>
-                    {product.imageUrl ? (
-                      <img 
-                        src={`http://localhost:8080${product.imageUrl}`} 
-                        alt={product.name} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <span style={{ color: '#bdc3c7', fontSize: '3rem' }}>📷</span>
-                    )}
-                  </div>
-                    <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>{product.name}</h3>
-                    <h2 style={{ color: '#27ae60', margin: '15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
-                    <p style={{ color: product.availableStock > 0 ? '#3498db' : '#e74c3c', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                      {product.availableStock > 0 ? `Stock: ${product.availableStock} unid.` : 'Agotado'}
-                    </p>
-                    <button 
-                      onClick={() => addToCart(product)}
-                      disabled={product.availableStock <= 0}
-                      style={{ 
-                        padding: '10px', width: '100%', cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
-                        backgroundColor: product.availableStock > 0 ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' 
-                      }}>
-                      {product.availableStock > 0 ? 'Agregar al pedido' : 'Sin Stock'}
-                    </button>
+                  <div key={product.id} style={{ backgroundColor: '#3A322D', border: '1px solid #51433A', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                      onClick={() => openProductModal(product)}
+                      style={{ height: '280px', backgroundColor: '#1A1816', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}
+                    >
+                      {product.imageUrls && product.imageUrls.length > 0 ? (
+                        <img src={`http://localhost:8080${product.imageUrls[0]}`} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ color: '#68594D', fontSize: '3rem' }}>📷</span>
+                      )}
+                    </div>
+                    <div style={{ padding: '20px' }}>
+                      <h3 style={{ margin: '0 0 5px 0', fontSize: '1.3rem', color: '#F5EFE6' }}>{product.name}</h3>
+                      <p style={{ margin: '0 0 15px 0', color: '#B8B0A3', fontSize: '0.85rem' }}>Stock disponible: {product.availableStock} unid.</p>
+                      <h2 style={{ color: '#D67026', margin: '0 0 15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
+                      <button 
+                        onClick={() => addToCart(product)}
+                        disabled={product.availableStock <= 0}
+                        style={{ 
+                          padding: '12px', width: '100%', cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
+                          backgroundColor: product.availableStock > 0 ? '#D67026' : '#51433A', color: product.availableStock > 0 ? '#F5EFE6' : '#B8B0A3', 
+                          border: 'none', borderRadius: '2px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px'
+                        }}>
+                        {product.availableStock > 0 ? 'Agregar al Carrito' : 'Agotado'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -223,62 +225,121 @@ function CatalogPage() {
         )}
       </div>
 
-      <div style={{ flex: 1, backgroundColor: '#f8f9fa', padding: '25px', borderRadius: '12px', height: 'fit-content', border: '1px solid #e9ecef', position: 'sticky', top: '20px' }}>
-        <h2 style={{ marginTop: 0 }}>Resumen del Pedido</h2>
-        <hr style={{ borderColor: '#dee2e6', marginBottom: '20px' }} />
+      <div style={{ flex: '1 1 350px', backgroundColor: '#3A322D', padding: '25px', borderRadius: '4px', border: '1px solid #51433A', height: 'fit-content', position: 'sticky', top: '100px' }}>
+        <h2 style={{ marginTop: 0, textTransform: 'uppercase', color: '#F5EFE6', letterSpacing: '1px' }}>Tu Pedido</h2>
+        <hr style={{ borderColor: '#51433A', marginBottom: '20px' }} />
         
         {cart.length === 0 ? (
-          <p style={{ color: '#7f8c8d' }}>No hay productos seleccionados.</p>
+          <p style={{ color: '#B8B0A3' }}>El carrito está vacío.</p>
         ) : (
           <ul style={{ paddingLeft: 0, listStyle: 'none', margin: 0 }}>
             {cart.map((item) => (
-              <li key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #eee' }}>
+              <li key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #51433A' }}>
                 <div style={{ flex: 1 }}>
-                  <strong style={{ display: 'block', marginBottom: '5px' }}>{item.product.name}</strong>
-                  <span style={{ color: '#7f8c8d' }}>${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</span>
+                  <strong style={{ display: 'block', marginBottom: '5px', color: '#F5EFE6' }}>{item.product.name}</strong>
+                  <span style={{ color: '#D67026', fontWeight: 'bold' }}>${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button onClick={() => decreaseQuantity(item.product.id)} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: '4px', width: '25px', height: '25px', cursor: 'pointer', fontWeight: 'bold' }}>-</button>
-                  <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                  <button onClick={() => addToCart(item.product)} style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '4px', width: '25px', height: '25px', cursor: 'pointer', fontWeight: 'bold' }}>+</button>
-                  <button onClick={() => removeFromCart(item.product.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', width: '25px', height: '25px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '10px' }} title="Eliminar producto">X</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={() => decreaseQuantity(item.product.id)} style={{ backgroundColor: '#51433A', color: '#F5EFE6', border: 'none', borderRadius: '2px', width: '28px', height: '28px', cursor: 'pointer' }}>-</button>
+                  <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center', color: '#F5EFE6' }}>{item.quantity}</span>
+                  <button onClick={() => addToCart(item.product)} style={{ backgroundColor: '#51433A', color: '#F5EFE6', border: 'none', borderRadius: '2px', width: '28px', height: '28px', cursor: 'pointer' }}>+</button>
+                  <button onClick={() => removeFromCart(item.product.id)} style={{ backgroundColor: 'transparent', color: '#e74c3c', border: 'none', cursor: 'pointer', marginLeft: '5px' }}>✕</button>
                 </div>
               </li>
             ))}
           </ul>
         )}
         
-        <h3 style={{ fontSize: '1.5rem', marginTop: '20px', borderTop: '2px solid #2c3e50', paddingTop: '15px' }}>Total: ${cartTotal.toLocaleString('es-AR')}</h3>
+        <h3 style={{ fontSize: '1.5rem', marginTop: '20px', borderTop: '1px solid #51433A', paddingTop: '15px', color: '#F5EFE6' }}>Total: ${cartTotal.toLocaleString('es-AR')}</h3>
         
         <div style={{ marginTop: '30px' }}>
-          <h4 style={{ marginBottom: '15px', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>Datos del Cliente</h4>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Nombre</label>
-              <input type="text" name="firstName" placeholder="Ej: Juan" value={customer.firstName} onChange={handleCustomerChange} style={inputStyle} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Apellido</label>
-              <input type="text" name="lastName" placeholder="Ej: Pérez" value={customer.lastName} onChange={handleCustomerChange} style={inputStyle} />
-            </div>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Correo Electrónico</label>
-            <input type="email" name="email" placeholder="ejemplo@correo.com" value={customer.email} onChange={handleCustomerChange} style={inputStyle} />
-          </div>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Teléfono (Solo números)</label>
-            <input type="tel" name="phone" placeholder="Ej: 3514445555" value={customer.phone} onChange={handleCustomerChange} style={inputStyle} />
-          </div>
-          <button onClick={submitOrder} style={{ width: '100%', padding: '15px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}>
-            Generar Pedido
+          <h4 style={{ color: '#B8B0A3', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '15px' }}>Datos de Contacto</h4>
+          
+          <label style={labelStyleDark}>Nombre</label>
+          <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} style={inputStyleDark} />
+          {formErrors.firstName && <span style={errorStyle}>{formErrors.firstName}</span>}
+
+          <label style={labelStyleDark}>Apellido</label>
+          <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} style={inputStyleDark} />
+          {formErrors.lastName && <span style={errorStyle}>{formErrors.lastName}</span>}
+
+          <label style={labelStyleDark}>Correo Electrónico</label>
+          <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} style={inputStyleDark} />
+          {formErrors.email && <span style={errorStyle}>{formErrors.email}</span>}
+
+          <label style={labelStyleDark}>Teléfono (Sin guiones)</label>
+          <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} style={inputStyleDark} />
+          {formErrors.phone && <span style={errorStyle}>{formErrors.phone}</span>}
+          
+          <button onClick={submitOrder} style={{ width: '100%', padding: '15px', backgroundColor: '#D67026', color: '#F5EFE6', border: 'none', borderRadius: '2px', fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'uppercase', cursor: 'pointer', marginTop: '10px', letterSpacing: '1px' }}>
+            Confirmar Pedido
           </button>
         </div>
       </div>
+
+      {selectedProduct && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(26, 24, 22, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#3A322D', borderRadius: '4px', width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', border: '1px solid #51433A' }}>
+            
+            <div style={{ flex: '1 1 400px', backgroundColor: '#1A1816', position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {selectedProduct.imageUrls && selectedProduct.imageUrls.length > 0 ? (
+                <>
+                  <img src={`http://localhost:8080${selectedProduct.imageUrls[currentImageIndex]}`} alt="Detalle" style={{ width: '100%', maxHeight: '500px', objectFit: 'contain' }} />
+                  {selectedProduct.imageUrls.length > 1 && (
+                    <div style={{ position: 'absolute', bottom: '15px', display: 'flex', gap: '10px', width: '100%', justifyContent: 'center' }}>
+                      {selectedProduct.imageUrls.map((_, idx) => (
+                        <button 
+                          key={idx} 
+                          onClick={() => setCurrentImageIndex(idx)}
+                          style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', backgroundColor: currentImageIndex === idx ? '#D67026' : '#68594D', cursor: 'pointer' }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span style={{ color: '#68594D', fontSize: '4rem' }}>📷</span>
+              )}
+            </div>
+
+            <div style={{ flex: '1 1 350px', padding: '30px', position: 'relative' }}>
+              <button onClick={closeProductModal} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#B8B0A3', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+              
+              <h2 style={{ color: '#F5EFE6', margin: '0 0 10px 0', fontSize: '2rem' }}>{selectedProduct.name}</h2>
+              <p style={{ color: '#D67026', fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 20px 0' }}>${selectedProduct.salePrice.toLocaleString('es-AR')}</p>
+              
+              <div style={{ backgroundColor: '#2B2522', padding: '15px', borderRadius: '2px', marginBottom: '20px', border: '1px solid #51433A' }}>
+                <p style={{ color: '#B8B0A3', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                  {selectedProduct.description || "Sin descripción disponible."}
+                </p>
+              </div>
+
+              <p style={{ color: '#B8B0A3', fontSize: '0.9rem' }}>Categoría: {selectedProduct.categoryName}</p>
+              <p style={{ color: '#B8B0A3', fontSize: '0.9rem', marginBottom: '30px' }}>Stock disponible: {selectedProduct.availableStock} unid.</p>
+
+              <button 
+                onClick={() => { addToCart(selectedProduct); closeProductModal(); }}
+                disabled={selectedProduct.availableStock <= 0}
+                style={{ 
+                  padding: '15px', width: '100%', cursor: selectedProduct.availableStock > 0 ? 'pointer' : 'not-allowed', 
+                  backgroundColor: selectedProduct.availableStock > 0 ? '#D67026' : '#51433A', color: selectedProduct.availableStock > 0 ? '#F5EFE6' : '#B8B0A3', 
+                  border: 'none', borderRadius: '2px', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px'
+                }}>
+                {selectedProduct.availableStock > 0 ? 'Agregar al Pedido' : 'Sin Stock Físico'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', boxSizing: 'border-box' as const }
+const inputStyleDark = { 
+  width: '100%', padding: '12px', marginBottom: '5px', borderRadius: '2px', 
+  border: '1px solid #68594D', backgroundColor: '#2B2522', color: '#F5EFE6', boxSizing: 'border-box' as const 
+};
+const labelStyleDark = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#B8B0A3', textTransform: 'uppercase' as const };
+const errorStyle = { color: '#e74c3c', fontSize: '0.8rem', display: 'block', marginBottom: '15px' };
 
 export default CatalogPage

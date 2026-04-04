@@ -6,8 +6,9 @@ public record ProductResponseDTO(
         Long id,
         String sku,
         String name,
-        BigDecimal salePrice,
+        String description,
+        java.math.BigDecimal salePrice,
         String categoryName,
         Long availableStock,
-        String imageUrl
+        java.util.List<String> imageUrls 
 ) {}

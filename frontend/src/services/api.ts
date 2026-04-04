@@ -52,7 +52,7 @@ export const adminService = {
         });
         return response.data;
     },
-    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, salePrice: number }) => {
+    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, description: string, salePrice: number }) => {
         const response = await apiClient.put(`/products/${id}`, productData);
         return response.data;
     },
