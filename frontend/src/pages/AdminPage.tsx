@@ -19,6 +19,8 @@ export default function AdminPage() {
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [newBatch, setNewBatch] = useState({ productId: 0, quantityProduced: '', totalBatchCost: '' });
 
+  const [abandonedCarts, setAbandonedCarts] = useState<any[]>([]);
+
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
     if (token) {
@@ -26,11 +28,62 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadAbandonedCarts = async () => {
+    try {
+      const data = await adminService.getAbandonedCarts();
+      setAbandonedCarts(data.reverse());
+    } catch (error) {
+      console.error("Error al cargar leads", error);
+    }
+  };
+
+  const handleRecoverCart = async (id: number) => {
+    try {
+      await adminService.recoverAbandonedCart(id);
+      Swal.fire({ icon: 'success', title: 'Marcado como recuperado', timer: 1500, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
+      const loadAbandonedCarts = async () => {
+        const data = await adminService.getAbandonedCarts();
+        setAbandonedCarts(data.reverse());
+      };
+      loadAbandonedCarts();
+    } catch (error) {
+      handleApiError(error, 'No se pudo actualizar el estado.');
+    }
+  };
+
+  const handleDeleteCart = async (id: number) => {
+    const result = await Swal.fire({
+      title: '¿Eliminar registro?',
+      text: "Esta acción no se puede deshacer.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e74c3c',
+      cancelButtonColor: '#68594D',
+      confirmButtonText: 'Sí, eliminar',
+      background: '#3A322D', color: '#F5EFE6'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await adminService.deleteAbandonedCart(id);
+        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
+        const loadAbandonedCarts = async () => {
+          const data = await adminService.getAbandonedCarts();
+          setAbandonedCarts(data.reverse());
+        };
+        loadAbandonedCarts();
+      } catch (error) {
+        handleApiError(error, 'No se pudo eliminar el registro.');
+      }
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       loadProducts();
       loadReport();
       loadOrders();
+      loadAbandonedCarts();
     }
   }, [isAuthenticated]);
 
@@ -529,6 +582,46 @@ export default function AdminPage() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={{...cardStyle, marginTop: '30px'}}>
+            <h3 style={{ color: '#e74c3c' }}>👻 Carritos Abandonados (Fuga)</h3>
+            {abandonedCarts.length === 0 ? <p style={{ color: '#B8B0A3' }}>No hay registros pendientes de gestión.</p> : (
+              <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Fecha</th>
+                      <th style={thStyle}>Contacto</th>
+                      <th style={thStyle}>Intento de Compra</th>
+                      <th style={thStyle}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {abandonedCarts.map((cart) => (
+                      <tr key={cart.id}>
+                        <td style={tdStyle}>{new Date(cart.capturedAt).toLocaleDateString('es-AR')}</td>
+                        <td style={tdStyle}>
+                          <span style={{display:'block'}}>{cart.customerEmail}</span>
+                          <span style={{color: '#D67026', fontWeight: 'bold'}}>{cart.customerPhone}</span>
+                        </td>
+                        <td style={{...tdStyle, fontSize: '0.85rem', color: '#B8B0A3'}}>{cart.cartContent}</td>
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => handleRecoverCart(cart.id)} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }} title="Marcar como venta recuperada">
+                              ✓
+                            </button>
+                            <button onClick={() => handleDeleteCart(cart.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }} title="Descartar permanentemente">
+                              ✕
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

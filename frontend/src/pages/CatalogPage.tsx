@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import { leadService } from '../services/api';
 
 function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -88,6 +89,24 @@ function CatalogPage() {
     }
     setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
   }
+
+  const handleSilentCapture = async () => {
+    if (cart.length === 0) return;
+    if (!customer.email.trim() && !customer.phone.trim()) return;
+
+    const cartContent = cart.map(item => `${item.quantity}x ${item.product.name} ($${item.product.salePrice})`).join(' | ');
+    
+    try {
+      // Se envía en segundo plano. Si falla, el usuario no se entera.
+      await leadService.captureLead({
+        email: customer.email,
+        phone: customer.phone,
+        cartContent: cartContent
+      });
+    } catch (error) {
+      console.error("Fallo silencioso en captura de lead.");
+    }
+  };
 
   const submitOrder = async () => {
     if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'Carrito vacío', background: '#3A322D', color: '#F5EFE6' });
@@ -272,13 +291,13 @@ function CatalogPage() {
             {formErrors.lastName && <span style={errorStyle}>{formErrors.lastName}</span>}
 
             <label style={labelStyleDark}>Correo Electrónico</label>
-            <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} style={inputStyleDark} />
+            <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleSilentCapture} style={inputStyleDark} />
             {formErrors.email && <span style={errorStyle}>{formErrors.email}</span>}
 
             <label style={labelStyleDark}>Teléfono (Sin guiones)</label>
-            <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} style={inputStyleDark} />
+            <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleSilentCapture} style={inputStyleDark} />
             {formErrors.phone && <span style={errorStyle}>{formErrors.phone}</span>}
-
+            
             <h4 style={{ color: '#B8B0A3', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '15px', marginTop: '20px' }}>Dirección de Envío</h4>
             
             <div style={{ display: 'flex', gap: '10px' }}>

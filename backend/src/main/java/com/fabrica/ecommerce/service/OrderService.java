@@ -87,6 +87,18 @@ public class OrderService {
                 "</div>");
         }
 
+        // ALERTA INTERNA PARA ADMINISTRACIÓN
+        String adminHtmlBody = "<div style='font-family: Arial, sans-serif; color: #333;'>" +
+            "<h2 style='color: #D67026;'>🚨 NUEVO PEDIDO PENDIENTE: #" + savedOrder.getOrderCode() + "</h2>" +
+            "<p><strong>Total a cobrar:</strong> $" + totalSale + "</p>" +
+            "<p><strong>Cliente / Contacto:</strong> " + savedOrder.getCustomerContact() + "</p>" +
+            "<p><strong>Dirección de Envío:</strong> " + savedOrder.getDeliveryAddress() + "</p>" +
+            "<hr style='border: 1px solid #ccc;'/>" +
+            "<p><em>Ingresa al panel de administración para ver el detalle. Es tu responsabilidad contactar al cliente si no recibes el mensaje de WhatsApp.</em></p>" +
+            "</div>";
+
+        emailService.sendHtmlEmail("ritualparrillas@gmail.com", "VENTA PENDIENTE: #" + savedOrder.getOrderCode(), adminHtmlBody);
+
         return savedOrder;
     }
 

@@ -99,5 +99,24 @@ export const adminService = {
             responseType: 'blob'
         });
         return response.data;
+    },
+    getAbandonedCarts: async () => {
+        const response = await apiClient.get('/leads');
+        return response.data;
+    },
+    recoverAbandonedCart: async (id: number) => {
+        const response = await apiClient.patch(`/leads/${id}/recover`);
+        return response.data;
+    },
+    deleteAbandonedCart: async (id: number) => {
+        const response = await apiClient.delete(`/leads/${id}`);
+        return response.data;
+    },
+};
+
+export const leadService = {
+    captureLead: async (payload: { email: string, phone: string, cartContent: string }) => {
+        const response = await apiClient.post('/leads/capture', payload);
+        return response.data;
     }
 };
