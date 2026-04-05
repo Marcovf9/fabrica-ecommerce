@@ -1,24 +1,24 @@
-import { useEffect, useState } from 'react'
-import { catalogService, orderService } from '../services/api'
-import type { Product, CartItem } from '../types'
+import { useEffect, useState } from 'react';
+import { catalogService, orderService, leadService } from '../services/api';
+import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { leadService } from '../services/api';
+import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen } from 'lucide-react';
 
-function CatalogPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+export default function CatalogPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [cart, setCart] = useState<CartItem[]>(() => {
     const savedCart = localStorage.getItem('fabrica_cart');
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
-  const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' })
-  const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' })
+  const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
+  const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
@@ -26,16 +26,16 @@ function CatalogPage() {
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
-        const data = await catalogService.getCatalog()
-        setProducts(data)
+        const data = await catalogService.getCatalog();
+        setProducts(data);
       } catch (err) {
-        setError("Error al cargar el catálogo de productos.")
+        setError("Error al cargar el catálogo de productos.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchCatalog()
-  }, [])
+    };
+    fetchCatalog();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('fabrica_cart', JSON.stringify(cart));
@@ -43,164 +43,129 @@ function CatalogPage() {
 
   const addToCart = (product: Product) => {
     if (product.availableStock <= 0) {
-      return Swal.fire({ icon: 'error', title: 'Agotado', background: '#3A322D', color: '#F5EFE6', text: `El producto ${product.name} no tiene stock disponible.` });
+      return Swal.fire({ icon: 'error', title: 'Agotado', background: '#3A322D', color: '#F5EFE6', text: `El producto no tiene stock disponible.` });
     }
-
     setCart((prevCart) => {
-      const existing = prevCart.find(item => item.product.id === product.id)
+      const existing = prevCart.find(item => item.product.id === product.id);
       if (existing) {
         if (existing.quantity >= product.availableStock) {
           Swal.fire({ icon: 'warning', title: 'Límite de stock', background: '#3A322D', color: '#F5EFE6', text: `Solo quedan ${product.availableStock} unidades.`, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
           return prevCart;
         }
         Swal.fire({ icon: 'success', title: 'Agregado al carrito', background: '#3A322D', color: '#F5EFE6', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
-        return prevCart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+        return prevCart.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
       Swal.fire({ icon: 'success', title: 'Agregado al carrito', background: '#3A322D', color: '#F5EFE6', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
-      return [...prevCart, { product, quantity: 1 }]
-    })
-  }
+      return [...prevCart, { product, quantity: 1 }];
+    });
+  };
 
   const decreaseQuantity = (productId: number) => {
-    setCart((prevCart) => {
-      const existing = prevCart.find(item => item.product.id === productId);
+    setCart((prev) => {
+      const existing = prev.find(item => item.product.id === productId);
       if (existing && existing.quantity > 1) {
-        return prevCart.map(item => item.product.id === productId ? { ...item, quantity: item.quantity - 1 } : item );
+        return prev.map(item => item.product.id === productId ? { ...item, quantity: item.quantity - 1 } : item );
       }
-      return prevCart.filter(item => item.product.id !== productId);
+      return prev.filter(item => item.product.id !== productId);
     });
-  }
+  };
 
-  const removeFromCart = (productId: number) => {
-    setCart((prevCart) => prevCart.filter(item => item.product.id !== productId))
-  }
+  const removeFromCart = (productId: number) => setCart(prev => prev.filter(item => item.product.id !== productId));
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCustomer({ ...customer, [name]: value });
 
-    let errorMsg = '';
-    if ((name === 'firstName' || name === 'lastName') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
-      errorMsg = 'Solo debe contener letras.';
-    } else if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      errorMsg = 'Formato de correo inválido.';
-    } else if (name === 'phone' && value && !/^[0-9]+$/.test(value)) {
-      errorMsg = 'Solo debe contener números.';
+    if (name === 'email' && value.length === 5 && (window as any).fbq) {
+        (window as any).fbq('track', 'InitiateCheckout');
     }
+
+    let errorMsg = '';
+    if ((name === 'firstName' || name === 'lastName') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) errorMsg = 'Solo debe contener letras.';
+    else if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) errorMsg = 'Formato inválido.';
+    else if (name === 'phone' && value && !/^[0-9]+$/.test(value)) errorMsg = 'Solo debe contener números.';
     setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
-  }
+  };
 
   const handleSilentCapture = async () => {
-    if (cart.length === 0) return;
-    if (!customer.email.trim() && !customer.phone.trim()) return;
-
-    const cartContent = cart.map(item => `${item.quantity}x ${item.product.name} ($${item.product.salePrice})`).join(' | ');
-    
+    if (cart.length === 0 || (!customer.email.trim() && !customer.phone.trim())) return;
+    const cartContent = cart.map(item => `${item.quantity}x ${item.product.name}`).join(' | ');
     try {
-      // Se envía en segundo plano. Si falla, el usuario no se entera.
-      await leadService.captureLead({
-        email: customer.email,
-        phone: customer.phone,
-        cartContent: cartContent
-      });
-    } catch (error) {
-      console.error("Fallo silencioso en captura de lead.");
-    }
+      await leadService.captureLead({ email: customer.email, phone: customer.phone, cartContent });
+    } catch (error) { console.error("Fallo captura silenciosa"); }
   };
 
   const submitOrder = async () => {
     if (cart.length === 0) return Swal.fire({ icon: 'warning', title: 'Carrito vacío', background: '#3A322D', color: '#F5EFE6' });
-    
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim() || !customer.street.trim() || !customer.number.trim() || !customer.zip.trim() || !customer.city.trim()) {
       return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos son obligatorios.', background: '#3A322D', color: '#F5EFE6' });
     }
-    if (formErrors.firstName || formErrors.lastName || formErrors.email || formErrors.phone) {
-      return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'Corrige los errores marcados en rojo.', background: '#3A322D', color: '#F5EFE6' });
+    if (Object.values(formErrors).some(err => err !== '')) {
+      return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'Corrige los errores marcados.', background: '#3A322D', color: '#F5EFE6' });
     }
     
     try {
       const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
       const formattedAddress = `${customer.street} ${customer.number}, CP: ${customer.zip}, ${customer.city}`;
-      
-      const payload = { 
-        customerContact: formattedContact, 
-        deliveryAddress: formattedAddress, 
-        items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })) 
-      };
+      const payload = { customerContact: formattedContact, deliveryAddress: formattedAddress, items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity })) };
       
       const response = await orderService.createPendingOrder(payload);
       const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
       
-      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por $${cartTotal.toLocaleString('es-AR')}. Mi dirección de envío es ${formattedAddress}. Quiero coordinar el pago.`;
+      if ((window as any).fbq) { (window as any).fbq('track', 'Purchase', { value: cartTotal, currency: 'ARS' }); }
+
+      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por $${cartTotal.toLocaleString('es-AR')}. Mi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
       const waUrl = `https://wa.me/5493517150510?text=${encodeURIComponent(waMessage)}`;
 
       Swal.fire({
-        icon: 'success',
-        title: '¡Pedido Registrado!',
-        html: `Tu código de seguimiento: <b style="color:#D67026">${response.orderCode}</b><br/><br/>El stock ha sido reservado. Escríbenos por WhatsApp para coordinar el pago.`,
-        background: '#2B2522',
-        color: '#F5EFE6',
-        confirmButtonColor: '#27ae60',
-        confirmButtonText: 'Coordinar Pago (WhatsApp)'
-      }).then((result) => {
-        if (result.isConfirmed) window.open(waUrl, '_blank');
-      });
+        icon: 'success', title: '¡Pedido Registrado!',
+        html: `Código: <b class="text-brand-primary">${response.orderCode}</b><br/><br/>Stock reservado. Contáctanos para el pago.`,
+        background: '#2B2522', color: '#F5EFE6', confirmButtonColor: '#D67026', confirmButtonText: 'Coordinar Pago (WhatsApp)'
+      }).then((result) => { if (result.isConfirmed) window.open(waUrl, '_blank'); });
       
       setCart([]);
       setCustomer({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al generar el pedido.', background: '#3A322D', color: '#F5EFE6' });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al procesar.', background: '#3A322D', color: '#F5EFE6' });
     }
   };
 
-  if (loading) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#F5EFE6', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>Cargando Catálogo...</h2></div>
-  if (error) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#e74c3c', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>{error}</h2></div>
+  if (loading) return <div className="h-screen flex items-center justify-center bg-brand-dark"><div className="animate-spin text-brand-primary"><PackageOpen size={48} /></div></div>;
+  if (error) return <div className="h-screen flex items-center justify-center bg-brand-dark text-red-500"><h2>{error}</h2></div>;
 
-  const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0)
+  const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
   const allCategories = ['Todas', ...Array.from(new Set(products.map(p => p.categoryName)))];
-  
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'Todas' || p.categoryName === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return matchesSearch && (selectedCategory === 'Todas' || p.categoryName === selectedCategory);
   });
-
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
 
   return (
     <>
       <Helmet>
-        <title>Ritual Espacios | Parrillas Pesadas y Mobiliario de Exterior</title>
-        <meta name="description" content="Fabricación de mobiliario exterior y parrillas pesadas. Diseños en hierro y plástico reciclado construidos para perdurar." />
-        <meta property="og:title" content="Ritual Espacios | Fuego & Diseño" />
-        <meta property="og:description" content="Catálogo oficial de Ritual Espacios. Fogoneros, parrillas y muebles sustentables." />
-        <meta property="og:image" content="https://res.cloudinary.com/dq5bau3ky/image/upload/v1/ritual_espacios/logo.jpeg" />
-        <meta property="og:type" content="website" />
+        <title>Ritual Espacios | Parrillas y Mobiliario de Diseño</title>
       </Helmet>
 
-      <div style={{ padding: '40px 20px', display: 'flex', gap: '40px', maxWidth: '1400px', margin: '0 auto', flexWrap: 'wrap' }}>
-        
-        <div style={{ flex: '1 1 800px' }}>
-          <div style={{ marginBottom: '30px', backgroundColor: '#3A322D', padding: '20px', borderRadius: '4px', border: '1px solid #51433A' }}>
-            <input 
-              type="search" 
-              placeholder="🔍 Buscar modelo..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #68594D', backgroundColor: '#2B2522', color: '#F5EFE6', fontSize: '1.05rem', marginBottom: '15px', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-8">
+        <div className="flex-1">
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border mb-8 shadow-lg">
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-3.5 text-brand-muted" size={20} />
+              <input 
+                type="search" 
+                placeholder="Buscar producto..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 bg-brand-dark border border-brand-border rounded-md text-brand-text focus:outline-none focus:border-brand-primary transition-colors"
+              />
+            </div>
+            <div className="flex gap-3 flex-wrap">
               {allCategories.map(cat => (
                 <button 
-                  key={cat} 
-                  onClick={() => setSelectedCategory(cat)}
-                  style={{ 
-                    padding: '8px 16px', borderRadius: '2px', border: `1px solid ${selectedCategory === cat ? '#D67026' : '#68594D'}`, 
-                    cursor: 'pointer', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.8rem',
-                    backgroundColor: selectedCategory === cat ? '#D67026' : 'transparent',
-                    color: selectedCategory === cat ? '#F5EFE6' : '#B8B0A3',
-                    transition: 'all 0.2s'
-                  }}>
+                  key={cat} onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2 text-sm font-bold uppercase tracking-wider rounded-md transition-all duration-200 border ${selectedCategory === cat ? 'bg-brand-primary text-white border-brand-primary' : 'bg-transparent text-brand-muted border-brand-border hover:border-brand-primary hover:text-brand-primary'}`}
+                >
                   {cat}
                 </button>
               ))}
@@ -208,40 +173,38 @@ function CatalogPage() {
           </div>
 
           {filteredProducts.length === 0 ? (
-            <p style={{ textAlign: 'center', marginTop: '50px', color: '#B8B0A3' }}>No hay inventario que coincida con la búsqueda.</p>
+            <div className="text-center py-20 text-brand-muted flex flex-col items-center">
+              <PackageOpen size={48} className="mb-4 opacity-50" />
+              <p className="text-lg">No hay inventario que coincida con la búsqueda.</p>
+            </div>
           ) : (
             displayCategories.map(category => (
-              <div key={category} style={{ marginBottom: '50px' }}>
-                <h2 style={{ color: '#F5EFE6', borderBottom: '1px solid #51433A', paddingBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>{category}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
+              <div key={category} className="mb-12">
+                <h2 className="text-2xl text-brand-text font-light uppercase tracking-widest border-b border-brand-border pb-3 mb-6">{category}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredProducts.filter(p => p.categoryName === category).map((product) => (
-                    <div key={product.id} style={{ backgroundColor: '#3A322D', border: '1px solid #51433A', borderRadius: '4px', overflow: 'hidden' }}>
-                      <Link 
-                        to={`/producto/${product.sku}`}
-                        style={{ height: '280px', backgroundColor: '#1A1816', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', textDecoration: 'none' }}
-                      >
+                    <div key={product.id} className="bg-brand-card border border-brand-border rounded-lg overflow-hidden flex flex-col group hover:border-brand-primary transition-colors duration-300">
+                      <Link to={`/producto/${product.sku}`} className="h-64 bg-black overflow-hidden relative block">
                         {product.imageUrls && product.imageUrls.length > 0 ? (
-                          <img src={optimizeCloudinaryUrl(product.imageUrls[0], 400)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                         ) : (
-                          <span style={{ color: '#68594D', fontSize: '3rem' }}>📷</span>
+                          <div className="w-full h-full flex items-center justify-center text-brand-border"><PackageOpen size={64} /></div>
                         )}
                       </Link>
-                      <div style={{ padding: '20px' }}>
-                        <Link to={`/producto/${product.sku}`} style={{ textDecoration: 'none' }}>
-                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.3rem', color: '#F5EFE6' }}>{product.name}</h3>
+                      <div className="p-6 flex flex-col flex-1">
+                        <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors">
+                          <h3 className="text-xl font-medium text-brand-text mb-1">{product.name}</h3>
                         </Link>
-                        <p style={{ margin: '0 0 15px 0', color: '#B8B0A3', fontSize: '0.85rem' }}>Stock disponible: {product.availableStock} unid.</p>
-                        <h2 style={{ color: '#D67026', margin: '0 0 15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
-                        <button 
-                          onClick={() => addToCart(product)}
-                          disabled={product.availableStock <= 0}
-                          style={{ 
-                            padding: '12px', width: '100%', cursor: product.availableStock > 0 ? 'pointer' : 'not-allowed', 
-                            backgroundColor: product.availableStock > 0 ? '#D67026' : '#51433A', color: product.availableStock > 0 ? '#F5EFE6' : '#B8B0A3', 
-                            border: 'none', borderRadius: '2px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px'
-                          }}>
-                          {product.availableStock > 0 ? 'Agregar al Carrito' : 'Agotado'}
-                        </button>
+                        <p className="text-brand-muted text-sm mb-4">Stock: {product.availableStock} unid.</p>
+                        <div className="mt-auto">
+                          <p className="text-2xl font-bold text-brand-primary mb-4">${product.salePrice.toLocaleString('es-AR')}</p>
+                          <button 
+                            onClick={() => addToCart(product)} disabled={product.availableStock <= 0}
+                            className={`w-full py-3 px-4 font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-2 ${product.availableStock > 0 ? 'bg-brand-primary hover:bg-orange-600 text-white' : 'bg-brand-border text-brand-muted cursor-not-allowed'}`}
+                          >
+                            <ShoppingCart size={18} /> {product.availableStock > 0 ? 'Agregar' : 'Agotado'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -251,92 +214,100 @@ function CatalogPage() {
           )}
         </div>
 
-        {/* SIDEBAR CARRITO INTACTO */}
-        <div style={{ flex: '1 1 350px', backgroundColor: '#3A322D', padding: '25px', borderRadius: '4px', border: '1px solid #51433A', position: 'sticky', top: '100px', maxHeight: 'calc(100vh - 140px)', overflowY: 'auto' }}>
-          <h2 style={{ marginTop: 0, textTransform: 'uppercase', color: '#F5EFE6', letterSpacing: '1px' }}>Tu Pedido</h2>
-          <hr style={{ borderColor: '#51433A', marginBottom: '20px' }} />
+        <div className="w-full lg:w-96 lg:sticky lg:top-32 self-start bg-brand-panel p-6 rounded-lg border border-brand-border shadow-2xl max-h-[calc(100vh-9rem)] overflow-y-auto">
+          <div className="flex items-center gap-3 mb-6 border-b border-brand-border pb-4">
+            <ShoppingCart className="text-brand-primary" size={24} />
+            <h2 className="text-xl font-light uppercase tracking-widest text-brand-text m-0">Tu Pedido</h2>
+          </div>
           
           {cart.length === 0 ? (
-            <p style={{ color: '#B8B0A3' }}>El carrito está vacío.</p>
+            <p className="text-brand-muted text-center py-8">Tu carrito estructural está vacío.</p>
           ) : (
-            <ul style={{ paddingLeft: 0, listStyle: 'none', margin: 0 }}>
+            <div className="space-y-4 mb-6">
               {cart.map((item) => (
-                <li key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #51433A' }}>
-                  <div style={{ flex: 1 }}>
-                    <strong style={{ display: 'block', marginBottom: '5px', color: '#F5EFE6' }}>{item.product.name}</strong>
-                    <span style={{ color: '#D67026', fontWeight: 'bold' }}>${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</span>
+                <div key={item.product.id} className="flex justify-between items-center bg-brand-card p-3 rounded border border-brand-border">
+                  <div className="flex-1">
+                    <p className="text-brand-text font-medium text-sm">{item.product.name}</p>
+                    <p className="text-brand-primary font-bold text-sm">${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => decreaseQuantity(item.product.id)} style={{ backgroundColor: '#51433A', color: '#F5EFE6', border: 'none', borderRadius: '2px', width: '28px', height: '28px', cursor: 'pointer' }}>-</button>
-                    <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center', color: '#F5EFE6' }}>{item.quantity}</span>
-                    <button onClick={() => addToCart(item.product)} style={{ backgroundColor: '#51433A', color: '#F5EFE6', border: 'none', borderRadius: '2px', width: '28px', height: '28px', cursor: 'pointer' }}>+</button>
-                    <button onClick={() => removeFromCart(item.product.id)} style={{ backgroundColor: 'transparent', color: '#e74c3c', border: 'none', cursor: 'pointer', marginLeft: '5px' }}>✕</button>
+                  <div className="flex items-center gap-2 bg-brand-dark rounded px-2 py-1 border border-brand-border">
+                    <button onClick={() => decreaseQuantity(item.product.id)} className="text-brand-muted hover:text-white p-1"><Minus size={14} /></button>
+                    <span className="text-white font-bold w-4 text-center text-sm">{item.quantity}</span>
+                    <button onClick={() => addToCart(item.product)} className="text-brand-muted hover:text-white p-1"><Plus size={14} /></button>
                   </div>
-                </li>
+                  <button onClick={() => removeFromCart(item.product.id)} className="ml-3 text-red-500 hover:text-red-400 transition-colors p-1"><Trash2 size={18} /></button>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
           
-          <h3 style={{ fontSize: '1.5rem', marginTop: '20px', borderTop: '1px solid #51433A', paddingTop: '15px', color: '#F5EFE6' }}>Total: ${cartTotal.toLocaleString('es-AR')}</h3>
+          <div className="border-t border-brand-border pt-4 mb-6">
+            <h3 className="text-2xl font-bold text-white flex justify-between">
+              <span>Total:</span> <span>${cartTotal.toLocaleString('es-AR')}</span>
+            </h3>
+          </div>
           
-          <div style={{ marginTop: '30px' }}>
-            <h4 style={{ color: '#B8B0A3', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '15px' }}>Datos de Contacto</h4>
+          <div className="space-y-4">
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2">Contacto Administrativo</h4>
             
-            <label style={labelStyleDark}>Nombre</label>
-            <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} style={inputStyleDark} />
-            {formErrors.firstName && <span style={errorStyle}>{formErrors.firstName}</span>}
-
-            <label style={labelStyleDark}>Apellido</label>
-            <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} style={inputStyleDark} />
-            {formErrors.lastName && <span style={errorStyle}>{formErrors.lastName}</span>}
-
-            <label style={labelStyleDark}>Correo Electrónico</label>
-            <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleSilentCapture} style={inputStyleDark} />
-            {formErrors.email && <span style={errorStyle}>{formErrors.email}</span>}
-
-            <label style={labelStyleDark}>Teléfono (Sin guiones)</label>
-            <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleSilentCapture} style={inputStyleDark} />
-            {formErrors.phone && <span style={errorStyle}>{formErrors.phone}</span>}
-            
-            <h4 style={{ color: '#B8B0A3', textTransform: 'uppercase', fontSize: '0.85rem', marginBottom: '15px', marginTop: '20px' }}>Dirección de Envío</h4>
-            
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ flex: 2 }}>
-                <label style={labelStyleDark}>Calle</label>
-                <input type="text" name="street" value={customer.street} onChange={handleCustomerChange} style={inputStyleDark} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Nombre</label>
+                <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
+                {formErrors.firstName && <span className="text-red-500 text-xs mt-1 block">{formErrors.firstName}</span>}
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyleDark}>Número</label>
-                <input type="text" name="number" value={customer.number} onChange={handleCustomerChange} style={inputStyleDark} />
+              <div>
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Apellido</label>
+                <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
+                {formErrors.lastName && <span className="text-red-500 text-xs mt-1 block">{formErrors.lastName}</span>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Correo Electrónico</label>
+              <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleSilentCapture} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
+              {formErrors.email && <span className="text-red-500 text-xs mt-1 block">{formErrors.email}</span>}
+            </div>
+
+            <div>
+              <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Teléfono (Sin guiones)</label>
+              <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleSilentCapture} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
+              {formErrors.phone && <span className="text-red-500 text-xs mt-1 block">{formErrors.phone}</span>}
+            </div>
+
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Destino Logístico</h4>
+            
+            <div className="flex gap-3">
+              <div className="flex-[2]">
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Calle</label>
+                <input type="text" name="street" value={customer.street} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Núm.</label>
+                <input type="text" name="number" value={customer.number} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
               </div>
             </div>
             
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyleDark}>C. Postal</label>
-                <input type="text" name="zip" value={customer.zip} onChange={handleCustomerChange} style={inputStyleDark} />
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">C.P.</label>
+                <input type="text" name="zip" value={customer.zip} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
               </div>
-              <div style={{ flex: 2 }}>
-                <label style={labelStyleDark}>Localidad</label>
-                <input type="text" name="city" value={customer.city} onChange={handleCustomerChange} style={inputStyleDark} />
+              <div className="flex-[2]">
+                <label className="block text-xs uppercase text-brand-muted font-bold mb-1">Localidad</label>
+                <input type="text" name="city" value={customer.city} onChange={handleCustomerChange} className="w-full p-2.5 bg-brand-dark border border-brand-border rounded text-white focus:border-brand-primary outline-none" />
               </div>
             </div>
             
-            <button onClick={submitOrder} style={{ width: '100%', padding: '15px', backgroundColor: '#D67026', color: '#F5EFE6', border: 'none', borderRadius: '2px', fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'uppercase', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px' }}>
-              Confirmar Pedido
+            <button 
+              onClick={submitOrder} 
+              className="w-full mt-6 py-4 bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase tracking-widest rounded transition-all duration-300 shadow-[0_0_15px_rgba(214,112,38,0.3)] hover:shadow-[0_0_25px_rgba(214,112,38,0.5)]"
+            >
+              Confirmar y Coordinar
             </button>
           </div>
         </div>
       </div>
     </>
-  )
+  );
 }
-
-const inputStyleDark = { 
-  width: '100%', padding: '12px', marginBottom: '5px', borderRadius: '2px', 
-  border: '1px solid #68594D', backgroundColor: '#2B2522', color: '#F5EFE6', boxSizing: 'border-box' as const 
-};
-const labelStyleDark = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '5px', color: '#B8B0A3', textTransform: 'uppercase' as const };
-const errorStyle = { color: '#e74c3c', fontSize: '0.8rem', display: 'block', marginBottom: '15px' };
-
-export default CatalogPage

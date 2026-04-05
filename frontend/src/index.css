@@ -1,5 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
+  @apply bg-brand-dark text-brand-text font-sans antialiased;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
   margin: 0;
-  padding: 0;
-  background-color: #2B2522;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #51433A;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #D67026;
 }

@@ -3,6 +3,7 @@ import { adminService, catalogService, authService } from '../services/api';
 import type { Product, ProfitabilityReport, Order, OrderDetail } from '../types';
 import Swal from 'sweetalert2';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LogOut, Tag, Archive, BarChart3, ShoppingBag, Ghost, FileText, Download, Check, X } from 'lucide-react';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,49 +33,25 @@ export default function AdminPage() {
     try {
       const data = await adminService.getAbandonedCarts();
       setAbandonedCarts(data.reverse());
-    } catch (error) {
-      console.error("Error al cargar leads", error);
-    }
+    } catch (error) { console.error("Error al cargar leads", error); }
   };
 
   const handleRecoverCart = async (id: number) => {
     try {
       await adminService.recoverAbandonedCart(id);
-      Swal.fire({ icon: 'success', title: 'Marcado como recuperado', timer: 1500, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
-      const loadAbandonedCarts = async () => {
-        const data = await adminService.getAbandonedCarts();
-        setAbandonedCarts(data.reverse());
-      };
+      Swal.fire({ icon: 'success', title: 'Recuperado', timer: 1500, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
       loadAbandonedCarts();
-    } catch (error) {
-      handleApiError(error, 'No se pudo actualizar el estado.');
-    }
+    } catch (error) { handleApiError(error, 'Error al actualizar.'); }
   };
 
   const handleDeleteCart = async (id: number) => {
-    const result = await Swal.fire({
-      title: '¿Eliminar registro?',
-      text: "Esta acción no se puede deshacer.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74c3c',
-      cancelButtonColor: '#68594D',
-      confirmButtonText: 'Sí, eliminar',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-
+    const result = await Swal.fire({ title: '¿Eliminar registro?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', cancelButtonColor: '#68594D', confirmButtonText: 'Sí, eliminar', background: '#3A322D', color: '#F5EFE6' });
     if (result.isConfirmed) {
       try {
         await adminService.deleteAbandonedCart(id);
         Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
-        const loadAbandonedCarts = async () => {
-          const data = await adminService.getAbandonedCarts();
-          setAbandonedCarts(data.reverse());
-        };
         loadAbandonedCarts();
-      } catch (error) {
-        handleApiError(error, 'No se pudo eliminar el registro.');
-      }
+      } catch (error) { handleApiError(error, 'Error al eliminar.'); }
     }
   };
 
@@ -90,7 +67,7 @@ export default function AdminPage() {
   const handleApiError = (error: any, defaultMessage: string = 'Ocurrió un error') => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       handleLogout();
-      Swal.fire({ icon: 'error', title: 'Sesión expirada', text: 'Por favor, ingresa nuevamente.', background: '#3A322D', color: '#F5EFE6' });
+      Swal.fire({ icon: 'error', title: 'Sesión expirada', background: '#3A322D', color: '#F5EFE6' });
     } else {
       Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || defaultMessage, background: '#3A322D', color: '#F5EFE6' });
     }
@@ -101,27 +78,15 @@ export default function AdminPage() {
       const data = await catalogService.getCatalog();
       setProducts(data);
       if (data.length > 0) setNewBatch(prev => ({ ...prev, productId: data[0].id }));
-    } catch (error) {
-      console.error("Error al cargar productos", error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const loadReport = async () => {
-    try {
-      const data = await adminService.getProfitabilityReport();
-      setReport(data);
-    } catch (error) {
-      console.error("Error al cargar el reporte", error);
-    }
+    try { const data = await adminService.getProfitabilityReport(); setReport(data); } catch (error) { console.error(error); }
   };
 
   const loadOrders = async () => {
-    try {
-      const data = await adminService.getOrders();
-      setOrders(data.reverse()); 
-    } catch (error) {
-      console.error("Error al cargar pedidos", error);
-    }
+    try { const data = await adminService.getOrders(); setOrders(data.reverse()); } catch (error) { console.error(error); }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -130,143 +95,79 @@ export default function AdminPage() {
       const data = await authService.login({ username, password });
       localStorage.setItem('admin_token', data.token);
       setIsAuthenticated(true);
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Acceso Denegado', text: 'Credenciales inválidas.', background: '#3A322D', color: '#F5EFE6' });
-    }
+    } catch (error) { Swal.fire({ icon: 'error', title: 'Acceso Denegado', background: '#3A322D', color: '#F5EFE6' }); }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    setIsAuthenticated(false);
-    setUsername('');
-    setPassword('');
-  };
+  const handleLogout = () => { localStorage.removeItem('admin_token'); setIsAuthenticated(false); setUsername(''); setPassword(''); };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const generatedSku = `PRD-${Date.now().toString().slice(-6)}`;
-    
     const formData = new FormData();
     formData.append('categoryId', newProduct.categoryId.toString());
     formData.append('sku', generatedSku);
     formData.append('name', newProduct.name);
     formData.append('description', newProduct.description);
     formData.append('salePrice', newProduct.salePrice.toString());
-    
-    if (imageFiles) {
-      for (let i = 0; i < imageFiles.length; i++) {
-        formData.append('images', imageFiles[i]);
-      }
-    }
+    if (imageFiles) { for (let i = 0; i < imageFiles.length; i++) { formData.append('images', imageFiles[i]); } }
 
     try {
       await adminService.createProduct(formData);
-      Swal.fire({ icon: 'success', title: '¡Producto agregado!', html: `SKU Asignado: <b style="color:#D67026">${generatedSku}</b>`, background: '#3A322D', color: '#F5EFE6' });
+      Swal.fire({ icon: 'success', title: '¡Agregado!', html: `SKU: <b class="text-brand-primary">${generatedSku}</b>`, background: '#3A322D', color: '#F5EFE6' });
       setNewProduct({ categoryId: 1, name: '', description: '', salePrice: '' });
       setImageFiles(null); 
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       loadProducts();
-    } catch (error) {
-      handleApiError(error, 'No se pudo crear el producto.');
-    }
+    } catch (error) { handleApiError(error, 'No se pudo crear.'); }
   };
 
   const handleRegisterBatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { 
-      productId: newBatch.productId, 
-      quantityProduced: Number(newBatch.quantityProduced), 
-      totalBatchCost: Number(newBatch.totalBatchCost) 
-    };
-
+    const payload = { productId: newBatch.productId, quantityProduced: Number(newBatch.quantityProduced), totalBatchCost: Number(newBatch.totalBatchCost) };
     try {
       await adminService.registerBatch(payload);
-      Swal.fire({ icon: 'success', title: 'Lote Registrado', text: 'Stock actualizado.', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
+      Swal.fire({ icon: 'success', title: 'Lote Registrado', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
       setNewBatch(prev => ({ ...prev, quantityProduced: '', totalBatchCost: '' }));
-      loadProducts();
-      loadReport();
-    } catch (error) {
-      handleApiError(error, 'No se pudo registrar el lote.');
-    }
+      loadProducts(); loadReport();
+    } catch (error) { handleApiError(error, 'No se pudo registrar.'); }
   };
 
   const handleConfirmOrder = async (orderCode: string) => {
-    const result = await Swal.fire({
-      title: '¿Confirmar Pago?',
-      text: `Se descontará el stock físico del pedido ${orderCode}.`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#D67026',
-      cancelButtonColor: '#68594D',
-      confirmButtonText: 'Sí, Pago Recibido',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-    
+    const result = await Swal.fire({ title: '¿Confirmar Pago?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#D67026', background: '#3A322D', color: '#F5EFE6' });
     if (result.isConfirmed) {
       try {
         await adminService.confirmOrder(orderCode);
         Swal.fire({ icon: 'success', title: '¡Cobrado!', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
         loadOrders(); loadProducts(); loadReport(); 
-      } catch (error: any) {
-        handleApiError(error, 'No se pudo procesar el pago.');
-      }
+      } catch (error: any) { handleApiError(error, 'Error de pago.'); }
     }
   };
 
   const handleShipOrder = async (orderCode: string) => {
-    const result = await Swal.fire({
-      title: '¿Marcar como Enviado?',
-      text: `El pedido ${orderCode} saldrá del galpón.`,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonColor: '#2980b9',
-      cancelButtonColor: '#68594D',
-      confirmButtonText: 'Sí, Despachar',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-    
+    const result = await Swal.fire({ title: '¿Despachar?', icon: 'info', showCancelButton: true, confirmButtonColor: '#2980b9', background: '#3A322D', color: '#F5EFE6' });
     if (result.isConfirmed) {
       try {
         await adminService.shipOrder(orderCode);
         Swal.fire({ icon: 'success', title: '¡Despachado!', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
         loadOrders();
-      } catch (error: any) {
-        handleApiError(error, 'No se pudo despachar el pedido.');
-      }
+      } catch (error: any) { handleApiError(error, 'Error al despachar.'); }
     }
   };
 
   const handleCancelOrder = async (orderCode: string) => {
-    const result = await Swal.fire({
-      title: '¿Cancelar Pedido?',
-      text: `Se liberará el stock reservado.`,
-      icon: 'error',
-      showCancelButton: true,
-      confirmButtonColor: '#e74c3c',
-      cancelButtonColor: '#68594D',
-      confirmButtonText: 'Sí, Cancelar',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-
+    const result = await Swal.fire({ title: '¿Cancelar Pedido?', icon: 'error', showCancelButton: true, confirmButtonColor: '#e74c3c', background: '#3A322D', color: '#F5EFE6' });
     if (result.isConfirmed) {
       try {
         await adminService.cancelOrder(orderCode);
         Swal.fire({ icon: 'success', title: 'Cancelado', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
         loadOrders(); loadProducts(); 
-      } catch (error: any) {
-        handleApiError(error, 'No se pudo cancelar el pedido.');
-      }
+      } catch (error: any) { handleApiError(error, 'Error al cancelar.'); }
     }
   };
 
   const handleViewDetails = async (orderCode: string) => {
-    try {
-      const details = await adminService.getOrderDetails(orderCode);
-      setSelectedOrderDetails(details);
-    } catch (error) {
-      handleApiError(error, 'No se pudieron cargar los detalles del remito.');
-    }
+    try { const details = await adminService.getOrderDetails(orderCode); setSelectedOrderDetails(details); } catch (error) { handleApiError(error, 'Error de remito.'); }
   };
 
   const handleDownloadCsv = async () => {
@@ -274,14 +175,9 @@ export default function AdminPage() {
       const blob = await adminService.downloadProfitabilityCsv();
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `rentabilidad_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    } catch (error) {
-      handleApiError(error, 'No se pudo descargar el reporte CSV.');
-    }
+      link.href = url; link.setAttribute('download', `rentabilidad_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link); link.click(); link.parentNode?.removeChild(link);
+    } catch (error) { handleApiError(error, 'Error CSV.'); }
   };
 
   const handleDownloadPdf = async (orderCode: string) => {
@@ -289,85 +185,52 @@ export default function AdminPage() {
       const blob = await adminService.downloadOrderPdf(orderCode);
       const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `remito_${orderCode}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    } catch (error) {
-      handleApiError(error, 'No se pudo descargar el remito PDF.');
-    }
+      link.href = url; link.setAttribute('download', `remito_${orderCode}.pdf`);
+      document.body.appendChild(link); link.click(); link.parentNode?.removeChild(link);
+    } catch (error) { handleApiError(error, 'Error PDF.'); }
   };
 
   const handleEditPrice = async (product: Product) => {
-    const { value: newPrice } = await Swal.fire({
-      title: `Modificar Precio`,
-      text: `${product.name}`,
-      input: 'number',
-      inputValue: product.salePrice,
-      showCancelButton: true,
-      confirmButtonColor: '#D67026',
-      cancelButtonColor: '#68594D',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-
+    const { value: newPrice } = await Swal.fire({ title: `Modificar Precio`, text: `${product.name}`, input: 'number', inputValue: product.salePrice, showCancelButton: true, confirmButtonColor: '#D67026', background: '#3A322D', color: '#F5EFE6' });
     if (newPrice) {
       try {
         const catId = product.categoryName.includes('Plástico') ? 1 : 2;
-        await adminService.updateProduct(product.id, {
-          categoryId: catId,
-          sku: product.sku,
-          name: product.name,
-          salePrice: Number(newPrice),
-          description: product.description
-        });
+        await adminService.updateProduct(product.id, { categoryId: catId, sku: product.sku, name: product.name, salePrice: Number(newPrice), description: product.description });
         Swal.fire({ icon: 'success', title: 'Actualizado', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
         loadProducts(); 
-      } catch (error) {
-        handleApiError(error, 'No se pudo actualizar el precio.');
-      }
+      } catch (error) { handleApiError(error, 'Error al actualizar.'); }
     }
   };
 
   const handleDeleteProduct = async (product: Product) => {
-    const result = await Swal.fire({
-      title: '¿Dar de baja producto?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74c3c',
-      cancelButtonColor: '#68594D',
-      background: '#3A322D', color: '#F5EFE6'
-    });
-
+    const result = await Swal.fire({ title: '¿Baja de producto?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c', background: '#3A322D', color: '#F5EFE6' });
     if (result.isConfirmed) {
       try {
         await adminService.deleteProduct(product.id);
         Swal.fire({ icon: 'success', title: 'Desactivado', timer: 2000, showConfirmButton: false, background: '#3A322D', color: '#F5EFE6' });
         loadProducts(); 
-      } catch (error) {
-        handleApiError(error, 'No se pudo desactivar el producto.');
-      }
+      } catch (error) { handleApiError(error, 'Error al desactivar.'); }
     }
   };
 
-  const getStatusStyle = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'PENDING': return { bg: '#4A4132', color: '#F1C40F', text: 'PENDIENTE' };
-      case 'PAID': return { bg: '#294736', color: '#2ECC71', text: 'PAGADO' };
-      case 'SHIPPED': return { bg: '#284154', color: '#3498DB', text: 'ENVIADO' };
-      case 'CANCELLED': return { bg: '#4F2B2B', color: '#E74C3C', text: 'CANCELADO' };
-      default: return { bg: '#51433A', color: '#B8B0A3', text: status };
+      case 'PENDING': return { bg: 'bg-yellow-900/40', text: 'text-yellow-500', label: 'PENDIENTE' };
+      case 'PAID': return { bg: 'bg-green-900/40', text: 'text-green-400', label: 'PAGADO' };
+      case 'SHIPPED': return { bg: 'bg-blue-900/40', text: 'text-blue-400', label: 'ENVIADO' };
+      case 'CANCELLED': return { bg: 'bg-red-900/40', text: 'text-red-400', label: 'CANCELADO' };
+      default: return { bg: 'bg-gray-800', text: 'text-gray-400', label: status };
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '100px' }}>
-        <form onSubmit={handleLogin} style={{ border: '1px solid #51433A', padding: '40px', borderRadius: '4px', textAlign: 'center', backgroundColor: '#3A322D', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
-          <h2 style={{ color: '#F5EFE6', marginBottom: '20px' }}>🔐 Acceso Administrativo</h2>
-          <input required type="text" placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} style={inputStyle} autoFocus/>
-          <input required type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle}/>
-          <button type="submit" style={btnStyle('#D67026')}>Iniciar Sesión</button>
+      <div className="flex justify-center items-center h-screen bg-brand-dark px-4">
+        <form onSubmit={handleLogin} className="bg-brand-panel p-8 rounded-lg border border-brand-border shadow-2xl w-full max-w-md text-center">
+          <h2 className="text-2xl text-brand-text mb-6 font-light uppercase tracking-widest">Acceso Administrativo</h2>
+          <input required type="text" placeholder="Usuario" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:outline-none focus:border-brand-primary" autoFocus/>
+          <input required type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-3 mb-6 bg-brand-dark border border-brand-border rounded text-brand-text focus:outline-none focus:border-brand-primary"/>
+          <button type="submit" className="w-full py-3 bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase rounded transition-colors tracking-widest">Ingresar</button>
         </form>
       </div>
     );
@@ -376,117 +239,108 @@ export default function AdminPage() {
   const COLORS = ['#D67026', '#2980b9', '#27ae60', '#8e44ad', '#f1c40f'];
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
-      <style>{`
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
-      `}</style>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ color: '#F5EFE6', margin: 0 }}>⚙️ Panel de Control de Fábrica</h1>
-        <button onClick={handleLogout} style={{ padding: '10px 20px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '2px', fontWeight: 'bold', cursor: 'pointer' }}>
-          Cerrar Sesión
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <h1 className="text-3xl text-brand-text font-light uppercase tracking-widest flex items-center gap-3">
+          <Archive className="text-brand-primary" /> Panel de Fábrica
+        </h1>
+        <button onClick={handleLogout} className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded font-bold uppercase text-sm transition-colors tracking-wider">
+          <LogOut size={18} /> Cerrar Sesión
         </button>
       </div>
-      <hr style={{ borderColor: '#51433A', marginBottom: '30px' }}/>
-
+      
       {report.length > 0 && (
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
-          
-          <div style={{ ...cardStyle, flex: 2, minWidth: '500px', height: '380px' }}>
-            <h3 style={{ marginTop: 0, color: '#D67026' }}>📈 Comparativa: Ingresos vs Costos Operativos</h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart data={report} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <div className="flex flex-col lg:flex-row gap-6 mb-8">
+          <div className="flex-[2] bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md h-96">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><BarChart3 size={20}/> Ingresos vs Costos</h3>
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart data={report} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#51433A" />
-                <XAxis dataKey="category" stroke="#B8B0A3" />
-                <YAxis tickFormatter={(val) => `$${(val / 1000)}k`} stroke="#B8B0A3" />
+                <XAxis dataKey="category" stroke="#B8B0A3" fontSize={12} />
+                <YAxis tickFormatter={(val) => `$${(val / 1000)}k`} stroke="#B8B0A3" fontSize={12} />
                 <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#2B2522', borderColor: '#51433A', color: '#F5EFE6' }} />
-                <Legend wrapperStyle={{ color: '#B8B0A3' }} />
-                <Bar dataKey="totalRevenue" name="Ingresos Brutos" fill="#D67026" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="totalCost" name="Costo de Materiales" fill="#51433A" radius={[2, 2, 0, 0]} />
+                <Legend wrapperStyle={{ color: '#B8B0A3', fontSize: '12px' }} />
+                <Bar dataKey="totalRevenue" name="Ingresos" fill="#D67026" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="totalCost" name="Costos" fill="#51433A" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          <div style={{ ...cardStyle, flex: 1, minWidth: '300px', height: '380px' }}>
-            <h3 style={{ marginTop: 0, textAlign: 'center', color: '#D67026' }}>💰 Origen de Ganancia Neta</h3>
-            <ResponsiveContainer width="100%" height="90%">
+          <div className="flex-1 bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md h-96">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 text-center">Ganancia Neta</h3>
+            <ResponsiveContainer width="100%" height="85%">
               <PieChart>
-                <Pie data={report} dataKey="netProfit" nameKey="category" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5}>
-                  {report.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                <Pie data={report} dataKey="netProfit" nameKey="category" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                  {report.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#2B2522', borderColor: '#51433A', color: '#F5EFE6' }} />
-                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#B8B0A3' }}/>
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#B8B0A3', fontSize: '12px' }}/>
               </PieChart>
             </ResponsiveContainer>
           </div>
-
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1, minWidth: '350px' }}>
-          <div style={cardStyle}>
-            <h3 style={{ color: '#D67026' }}>🏷️ Crear Nuevo Producto</h3>
+      <div className="flex flex-col xl:flex-row gap-8 items-start">
+        <div className="flex flex-col gap-8 flex-1 w-full">
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><Tag size={20}/> Nuevo Producto</h3>
             <form onSubmit={handleCreateProduct}>
-              <label style={labelStyle}>Categoría</label>
-              <select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} style={inputStyle}>
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Categoría</label>
+              <select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none">
                 <option value={1}>Muebles de Exterior Sostenibles (Plástico)</option>
                 <option value={2}>Parrillas y Fogoneros Pesados (Hierro)</option>
               </select>
-              <label style={labelStyle}>Nombre del Producto</label>
-              <input required type="text" placeholder="Ej: Fogonero XL" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} style={inputStyle} />
-              <label style={labelStyle}>Descripción Detallada</label>
-              <textarea required placeholder="Medidas, materiales ..." value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} style={{...inputStyle, height: '80px', resize: 'vertical'}} />
-              <label style={labelStyle}>Precio de Venta al Público ($)</label>
-              <input required type="number" placeholder="Ej: 150000" value={newProduct.salePrice} onChange={(e) => setNewProduct({...newProduct, salePrice: e.target.value})} style={inputStyle} />
-              <label style={labelStyle}>Fotografías del Producto (Múltiples)</label>
-              <input id="file-upload" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(e.target.files)} style={{...inputStyle, padding: '6px'}} />
-              <button type="submit" style={btnStyle('#D67026')}>Crear Producto</button>
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Nombre</label>
+              <input required type="text" placeholder="Ej: Fogonero XL" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none" />
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Descripción</label>
+              <textarea required placeholder="Especificaciones..." value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none min-h-[100px]" />
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Precio de Venta ($)</label>
+              <input required type="number" placeholder="Ej: 150000" value={newProduct.salePrice} onChange={(e) => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none" />
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Fotografías</label>
+              <input id="file-upload" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(e.target.files)} className="w-full p-2 mb-6 bg-brand-dark border border-brand-border rounded text-brand-text" />
+              <button type="submit" className="w-full py-3 bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase rounded transition-colors tracking-wider">Crear Producto</button>
             </form>
           </div>
 
-          <div style={cardStyle}>
-            <h3 style={{ color: '#D67026' }}>📦 Ingreso de Lote de Producción</h3>
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><Archive size={20}/> Ingreso de Lote</h3>
             <form onSubmit={handleRegisterBatch}>
-              <label style={labelStyle}>Seleccionar Producto</label>
-              <select value={newBatch.productId} onChange={(e) => setNewBatch({...newBatch, productId: Number(e.target.value)})} style={inputStyle}>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableStock})</option>
-                ))}
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Producto</label>
+              <select value={newBatch.productId} onChange={(e) => setNewBatch({...newBatch, productId: Number(e.target.value)})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none">
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} (Stock: {p.availableStock})</option>)}
               </select>
-              <label style={labelStyle}>Cantidad Fabricada (Unidades)</label>
-              <input required type="number" placeholder="Ej: 50" value={newBatch.quantityProduced} onChange={(e) => setNewBatch({...newBatch, quantityProduced: e.target.value})} style={inputStyle} />
-              <label style={labelStyle}>Costo TOTAL del lote ($)</label>
-              <input required type="number" placeholder="Ej: 500000" value={newBatch.totalBatchCost} onChange={(e) => setNewBatch({...newBatch, totalBatchCost: e.target.value})} style={inputStyle} />
-              <button type="submit" style={btnStyle('#27ae60')}>Registrar Lote y Stock</button>
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Cantidad (Unid.)</label>
+              <input required type="number" placeholder="Ej: 50" value={newBatch.quantityProduced} onChange={(e) => setNewBatch({...newBatch, quantityProduced: e.target.value})} className="w-full p-3 mb-4 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none" />
+              <label className="block text-xs uppercase font-bold text-brand-muted mb-2">Costo Total ($)</label>
+              <input required type="number" placeholder="Ej: 500000" value={newBatch.totalBatchCost} onChange={(e) => setNewBatch({...newBatch, totalBatchCost: e.target.value})} className="w-full p-3 mb-6 bg-brand-dark border border-brand-border rounded text-brand-text focus:border-brand-primary outline-none" />
+              <button type="submit" className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold uppercase rounded transition-colors tracking-wider">Registrar Stock</button>
             </form>
           </div>
 
-          <div style={cardStyle}>
-            <h3 style={{ color: '#D67026' }}>📝 Catálogo Activo (Precios)</h3>
-            <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                <thead>
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><Tag size={20}/> Catálogo Activo</h3>
+            <div className="overflow-x-auto max-h-[400px]">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-brand-panel">
                   <tr>
-                    <th style={thStyle}>Producto</th>
-                    <th style={thStyle}>Precio Actual</th>
-                    <th style={thStyle}>Acción</th>
+                    <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Producto</th>
+                    <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Precio</th>
+                    <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.map((p) => (
-                    <tr key={p.id}>
-                      <td style={{...tdStyle, fontSize: '0.9rem'}}>{p.name} <br/><span style={{color:'#B8B0A3'}}>{p.sku}</span></td>
-                      <td style={tdStyle}><strong>${p.salePrice.toLocaleString('es-AR')}</strong></td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', gap: '5px' }}>
-                          <button onClick={() => handleEditPrice(p)} style={{ backgroundColor: '#2980b9', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Editar</button>
-                          <button onClick={() => handleDeleteProduct(p)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>Baja</button>
+                    <tr key={p.id} className="hover:bg-brand-dark transition-colors">
+                      <td className="p-3 border-b border-brand-border">
+                        <span className="text-brand-text font-medium block">{p.name}</span>
+                        <span className="text-brand-muted text-xs">{p.sku}</span>
+                      </td>
+                      <td className="p-3 border-b border-brand-border text-brand-primary font-bold">${p.salePrice.toLocaleString('es-AR')}</td>
+                      <td className="p-3 border-b border-brand-border">
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditPrice(p)} className="px-3 py-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded text-xs font-bold transition-colors">Editar</button>
+                          <button onClick={() => handleDeleteProduct(p)} className="px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded text-xs font-bold transition-colors">Baja</button>
                         </div>
                       </td>
                     </tr>
@@ -497,85 +351,84 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1.5, minWidth: '400px' }}>
-          
-          <div style={cardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, color: '#D67026' }}>📊 Tablero Financiero Detallado</h3>
+        <div className="flex flex-col gap-8 flex-[1.5] w-full">
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-brand-primary font-bold uppercase tracking-wider flex items-center gap-2"><BarChart3 size={20}/> Finanzas</h3>
               {report.length > 0 && (
-                <button onClick={handleDownloadCsv} style={{ padding: '8px 12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', letterSpacing: '1px' }}>
-                  📥 Exportar CSV
+                <button onClick={handleDownloadCsv} className="flex items-center gap-2 px-4 py-2 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white border border-green-600/30 rounded text-xs font-bold uppercase tracking-wider transition-colors">
+                  <Download size={14}/> CSV
                 </button>
               )}
             </div>
-            {report.length === 0 ? <p style={{ color: '#B8B0A3' }}>No hay ventas confirmadas.</p> : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                <thead>
-                  <tr>
-                    <th style={thStyle}>Categoría</th>
-                    <th style={thStyle}>Ingresos</th>
-                    <th style={thStyle}>Costos</th>
-                    <th style={thStyle}>Ganancia</th>
-                    <th style={thStyle}>Margen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.map((row, idx) => (
-                    <tr key={idx}>
-                      <td style={tdStyle}><strong>{row.category}</strong></td>
-                      <td style={tdStyle}>${row.totalRevenue.toLocaleString('es-AR')}</td>
-                      <td style={{...tdStyle, color: '#e74c3c'}}>-${row.totalCost.toLocaleString('es-AR')}</td>
-                      <td style={{...tdStyle, color: '#27ae60', fontWeight: 'bold'}}>${row.netProfit.toLocaleString('es-AR')}</td>
-                      <td style={tdStyle}>
-                        <span style={{ padding: '4px 8px', backgroundColor: row.marginPercentage > 30 ? '#294736' : '#4F2B2B', borderRadius: '2px', color: row.marginPercentage > 30 ? '#2ECC71' : '#E74C3C', fontWeight: 'bold' }}>
-                          {row.marginPercentage.toFixed(2)}%
-                        </span>
-                      </td>
+            {report.length === 0 ? <p className="text-brand-muted text-sm italic">Sin ventas confirmadas.</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Categoría</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Ingresos</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Costos</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Ganancia</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Margen</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {report.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-brand-dark transition-colors">
+                        <td className="p-3 border-b border-brand-border text-brand-text font-medium">{row.category}</td>
+                        <td className="p-3 border-b border-brand-border text-brand-text">${row.totalRevenue.toLocaleString('es-AR')}</td>
+                        <td className="p-3 border-b border-brand-border text-red-400">-${row.totalCost.toLocaleString('es-AR')}</td>
+                        <td className="p-3 border-b border-brand-border text-green-400 font-bold">${row.netProfit.toLocaleString('es-AR')}</td>
+                        <td className="p-3 border-b border-brand-border">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${row.marginPercentage > 30 ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+                            {row.marginPercentage.toFixed(2)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
-          <div style={cardStyle}>
-            <h3 style={{ color: '#D67026' }}>📋 Gestión de Pedidos</h3>
-            {orders.length === 0 ? <p style={{ color: '#B8B0A3' }}>No hay pedidos registrados.</p> : (
-              <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                  <thead>
+          <div className="bg-brand-panel p-6 rounded-lg border border-brand-border shadow-md">
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><ShoppingBag size={20}/> Pedidos</h3>
+            {orders.length === 0 ? <p className="text-brand-muted text-sm italic">No hay pedidos registrados.</p> : (
+              <div className="overflow-x-auto max-h-[500px]">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-brand-panel">
                     <tr>
-                      <th style={thStyle}>Código</th>
-                      <th style={thStyle}>Cliente</th>
-                      <th style={thStyle}>Total</th>
-                      <th style={thStyle}>Estado</th>
-                      <th style={thStyle}>Acción</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Código</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Cliente</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Total</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Estado</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.map((order) => {
-                      const statusStyle = getStatusStyle(order.status);
+                      const status = getStatusConfig(order.status);
                       return (
-                        <tr key={order.id}>
-                          <td style={tdStyle}><strong>{order.orderCode}</strong></td>
-                          <td style={tdStyle}>{order.customerContact.split('|')[0]}</td>
-                          <td style={tdStyle}>${order.totalSaleAmount.toLocaleString('es-AR')}</td>
-                          <td style={tdStyle}>
-                            <span style={{ padding: '4px 8px', backgroundColor: statusStyle.bg, color: statusStyle.color, borderRadius: '2px', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                              {statusStyle.text}
-                            </span>
+                        <tr key={order.id} className="hover:bg-brand-dark transition-colors">
+                          <td className="p-3 border-b border-brand-border text-brand-text font-bold">{order.orderCode}</td>
+                          <td className="p-3 border-b border-brand-border text-brand-text text-sm">{order.customerContact.split('|')[0]}</td>
+                          <td className="p-3 border-b border-brand-border text-brand-primary font-bold">${order.totalSaleAmount.toLocaleString('es-AR')}</td>
+                          <td className="p-3 border-b border-brand-border">
+                            <span className={`px-2 py-1 rounded text-xs font-bold tracking-wider ${status.bg} ${status.text}`}>{status.label}</span>
                           </td>
-                          <td style={tdStyle}>
-                            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
-                              <button onClick={() => handleViewDetails(order.orderCode)} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}>Detalle</button>
+                          <td className="p-3 border-b border-brand-border">
+                            <div className="flex gap-2 flex-wrap">
+                              <button onClick={() => handleViewDetails(order.orderCode)} className="px-3 py-1.5 bg-gray-600/30 hover:bg-gray-600 text-white rounded text-xs font-bold transition-colors">Detalle</button>
                               {order.status === 'PENDING' && (
                                 <>
-                                  <button onClick={() => handleConfirmOrder(order.orderCode)} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}>Cobrado</button>
-                                  <button onClick={() => handleCancelOrder(order.orderCode)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}>Cancelar</button>
+                                  <button onClick={() => handleConfirmOrder(order.orderCode)} className="px-3 py-1.5 bg-green-600/30 text-green-400 hover:bg-green-600 hover:text-white rounded text-xs font-bold transition-colors">Cobrar</button>
+                                  <button onClick={() => handleCancelOrder(order.orderCode)} className="px-3 py-1.5 bg-red-600/30 text-red-400 hover:bg-red-600 hover:text-white rounded text-xs font-bold transition-colors">Cancelar</button>
                                 </>
                               )}
                               {order.status === 'PAID' && (
-                                <button onClick={() => handleShipOrder(order.orderCode)} style={{ backgroundColor: '#2980b9', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold' }}>Despachar</button>
+                                <button onClick={() => handleShipOrder(order.orderCode)} className="px-3 py-1.5 bg-blue-600/30 text-blue-400 hover:bg-blue-600 hover:text-white rounded text-xs font-bold transition-colors">Despachar</button>
                               )}
                             </div>
                           </td>
@@ -588,36 +441,32 @@ export default function AdminPage() {
             )}
           </div>
 
-          <div style={{...cardStyle, marginTop: '30px'}}>
-            <h3 style={{ color: '#e74c3c' }}>👻 Carritos Abandonados (Fuga)</h3>
-            {abandonedCarts.length === 0 ? <p style={{ color: '#B8B0A3' }}>No hay registros pendientes de gestión.</p> : (
-              <div style={{ overflowX: 'auto', maxHeight: '400px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                  <thead>
+          <div className="bg-brand-panel p-6 rounded-lg border border-red-900/30 shadow-md">
+            <h3 className="text-red-500 font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><Ghost size={20}/> Carritos Abandonados</h3>
+            {abandonedCarts.length === 0 ? <p className="text-brand-muted text-sm italic">Sin registros de fuga recientes.</p> : (
+              <div className="overflow-x-auto max-h-[400px]">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-brand-panel">
                     <tr>
-                      <th style={thStyle}>Fecha</th>
-                      <th style={thStyle}>Contacto</th>
-                      <th style={thStyle}>Intento de Compra</th>
-                      <th style={thStyle}>Acción</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Fecha</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Contacto</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Intento</th>
+                      <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {abandonedCarts.map((cart) => (
-                      <tr key={cart.id}>
-                        <td style={tdStyle}>{new Date(cart.capturedAt).toLocaleDateString('es-AR')}</td>
-                        <td style={tdStyle}>
-                          <span style={{display:'block'}}>{cart.customerEmail}</span>
-                          <span style={{color: '#D67026', fontWeight: 'bold'}}>{cart.customerPhone}</span>
+                      <tr key={cart.id} className="hover:bg-brand-dark transition-colors">
+                        <td className="p-3 border-b border-brand-border text-brand-muted text-xs">{new Date(cart.capturedAt).toLocaleDateString('es-AR')}</td>
+                        <td className="p-3 border-b border-brand-border text-sm">
+                          <span className="block text-brand-text">{cart.customerEmail}</span>
+                          <span className="text-brand-primary font-bold">{cart.customerPhone}</span>
                         </td>
-                        <td style={{...tdStyle, fontSize: '0.85rem', color: '#B8B0A3'}}>{cart.cartContent}</td>
-                        <td style={tdStyle}>
-                          <div style={{ display: 'flex', gap: '5px' }}>
-                            <button onClick={() => handleRecoverCart(cart.id)} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }} title="Marcar como venta recuperada">
-                              ✓
-                            </button>
-                            <button onClick={() => handleDeleteCart(cart.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }} title="Descartar permanentemente">
-                              ✕
-                            </button>
+                        <td className="p-3 border-b border-brand-border text-xs text-brand-muted">{cart.cartContent}</td>
+                        <td className="p-3 border-b border-brand-border">
+                          <div className="flex gap-2">
+                            <button onClick={() => handleRecoverCart(cart.id)} className="p-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded transition-colors" title="Recuperado"><Check size={16}/></button>
+                            <button onClick={() => handleDeleteCart(cart.id)} className="p-1.5 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded transition-colors" title="Eliminar"><X size={16}/></button>
                           </div>
                         </td>
                       </tr>
@@ -627,51 +476,52 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-
         </div>
       </div>
 
       {selectedOrderDetails && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(26, 24, 22, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#3A322D', padding: '30px', borderRadius: '4px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', border: '1px solid #51433A' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #51433A', paddingBottom: '10px' }}>
-              <h2 style={{ margin: 0, color: '#F5EFE6' }}>📦 Remito Interno: {selectedOrderDetails.orderCode}</h2>
-              <button onClick={() => setSelectedOrderDetails(null)} style={{ backgroundColor: 'transparent', color: '#B8B0A3', border: 'none', fontSize: '1.5rem', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-brand-panel p-8 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-brand-border shadow-2xl">
+            <div className="flex justify-between items-center border-b border-brand-border pb-4 mb-6">
+              <h2 className="text-2xl text-brand-text font-light uppercase tracking-widest flex items-center gap-3"><FileText className="text-brand-primary"/> Remito: {selectedOrderDetails.orderCode}</h2>
+              <button onClick={() => setSelectedOrderDetails(null)} className="text-brand-muted hover:text-red-500 transition-colors"><X size={28}/></button>
             </div>
             
-            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Cliente / Contacto:</strong> {selectedOrderDetails.customerContact}</p>
-            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Dirección de Entrega:</strong> {selectedOrderDetails.deliveryAddress}</p>
-            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Estado:</strong> {getStatusStyle(selectedOrderDetails.status).text}</p>
+            <div className="space-y-2 mb-8 bg-brand-dark p-4 rounded border border-brand-border">
+              <p className="text-brand-text"><strong className="text-brand-muted uppercase text-xs mr-2">Cliente:</strong> {selectedOrderDetails.customerContact}</p>
+              <p className="text-brand-text"><strong className="text-brand-muted uppercase text-xs mr-2">Dirección:</strong> {selectedOrderDetails.deliveryAddress}</p>
+              <p className="text-brand-text"><strong className="text-brand-muted uppercase text-xs mr-2">Estado:</strong> <span className={`${getStatusConfig(selectedOrderDetails.status).text} font-bold`}>{getStatusConfig(selectedOrderDetails.status).label}</span></p>
+            </div>
             
-            <h3 style={{ marginTop: '20px', color: '#D67026' }}>Artículos a preparar:</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+            <h3 className="text-brand-primary font-bold uppercase tracking-wider mb-4">Artículos a Preparar</h3>
+            <table className="w-full text-left border-collapse mb-6">
               <thead>
                 <tr>
-                  <th style={thStyle}>Cant.</th>
-                  <th style={thStyle}>Producto (SKU)</th>
-                  <th style={thStyle}>P. Unitario</th>
-                  <th style={thStyle}>Subtotal</th>
+                  <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Cant.</th>
+                  <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Producto (SKU)</th>
+                  <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">P. Unit.</th>
+                  <th className="p-3 border-b border-brand-border text-brand-muted text-xs uppercase tracking-wider">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedOrderDetails.items.map((item, idx) => (
                   <tr key={idx}>
-                    <td style={{...tdStyle, fontWeight: 'bold', color: '#D67026'}}>{item.quantity}x</td>
-                    <td style={tdStyle}>{item.productName} <br/><span style={{ fontSize: '0.8rem', color: '#B8B0A3' }}>{item.sku}</span></td>
-                    <td style={tdStyle}>${item.unitPrice.toLocaleString('es-AR')}</td>
-                    <td style={tdStyle}>${item.subTotal.toLocaleString('es-AR')}</td>
+                    <td className="p-3 border-b border-brand-border text-brand-primary font-bold">{item.quantity}x</td>
+                    <td className="p-3 border-b border-brand-border text-brand-text text-sm">{item.productName} <br/><span className="text-xs text-brand-muted">{item.sku}</span></td>
+                    <td className="p-3 border-b border-brand-border text-brand-text text-sm">${item.unitPrice.toLocaleString('es-AR')}</td>
+                    <td className="p-3 border-b border-brand-border text-brand-text font-bold">${item.subTotal.toLocaleString('es-AR')}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             
-            <h2 style={{ textAlign: 'right', marginTop: '20px', color: '#27ae60' }}>
+            <h2 className="text-right text-2xl text-green-400 font-bold mb-8 border-t border-brand-border pt-4">
               Total: ${selectedOrderDetails.totalSaleAmount.toLocaleString('es-AR')}
             </h2>
             
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-              <button onClick={() => handleDownloadPdf(selectedOrderDetails.orderCode)} style={{ ...btnStyle('#2980b9'), marginTop: 0 }}>🖨️ Descargar Remito PDF</button>
-              <button onClick={() => setSelectedOrderDetails(null)} style={{ ...btnStyle('#51433A'), marginTop: 0 }}>Cerrar</button>
+            <div className="flex gap-4">
+              <button onClick={() => handleDownloadPdf(selectedOrderDetails.orderCode)} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase tracking-widest rounded flex items-center justify-center gap-2 transition-colors"><Download size={18}/> Descargar PDF</button>
+              <button onClick={() => setSelectedOrderDetails(null)} className="flex-1 py-3 bg-brand-border hover:bg-gray-600 text-white font-bold uppercase tracking-widest rounded transition-colors">Cerrar</button>
             </div>
           </div>
         </div>
@@ -679,10 +529,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-const cardStyle = { backgroundColor: '#3A322D', padding: '25px', borderRadius: '4px', border: '1px solid #51433A', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
-const labelStyle = { display: 'block', fontWeight: 'bold', marginBottom: '5px', marginTop: '15px', color: '#F5EFE6' };
-const inputStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '2px', border: '1px solid #68594D', backgroundColor: '#2B2522', color: '#F5EFE6', boxSizing: 'border-box' as const };
-const btnStyle = (color: string) => ({ width: '100%', padding: '12px', marginTop: '15px', backgroundColor: color, color: '#F5EFE6', border: 'none', borderRadius: '2px', fontWeight: 'bold', cursor: 'pointer', textTransform: 'uppercase' as const });
-const thStyle = { padding: '12px', textAlign: 'left' as const, color: '#B8B0A3', borderBottom: '1px solid #51433A' };
-const tdStyle = { padding: '12px', textAlign: 'left' as const, color: '#F5EFE6', borderBottom: '1px solid #51433A' };
