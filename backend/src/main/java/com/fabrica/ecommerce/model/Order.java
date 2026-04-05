@@ -20,6 +20,9 @@ public class Order {
     @Column(name = "customer_contact", length = 100)
     private String customerContact;
 
+    @Column(name = "delivery_address", length = 500)
+    private String deliveryAddress;
+
     @Column(name = "total_sale_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalSaleAmount;
 

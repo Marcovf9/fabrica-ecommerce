@@ -36,6 +36,7 @@ public class OrderService {
     public Order createPendingOrder(OrderRequestDTO request) {
         Order order = new Order();
         order.setCustomerContact(request.customerContact());
+        order.setDeliveryAddress(request.deliveryAddress());
         order.setStatus(Order.OrderStatus.PENDING);
         order.setOrderCode("PED-" + System.currentTimeMillis() % 1000000); 
         
@@ -267,6 +268,7 @@ public class OrderService {
         return new com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO(
                 order.getOrderCode(), 
                 order.getCustomerContact(), 
+                order.getDeliveryAddress(),
                 order.getStatus().name(), 
                 order.getTotalSaleAmount(), 
                 items

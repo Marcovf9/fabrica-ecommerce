@@ -93,5 +93,11 @@ export const adminService = {
     deleteProduct: async (id: number) => {
         const response = await apiClient.delete(`/products/${id}`);
         return response.data;
+    },
+    downloadProfitabilityCsv: async () => {
+        const response = await apiClient.get('/reports/profitability/export', {
+            responseType: 'blob'
+        });
+        return response.data;
     }
 };

@@ -216,6 +216,21 @@ export default function AdminPage() {
     }
   };
 
+  const handleDownloadCsv = async () => {
+    try {
+      const blob = await adminService.downloadProfitabilityCsv();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `rentabilidad_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      handleApiError(error, 'No se pudo descargar el reporte CSV.');
+    }
+  };
+
   const handleDownloadPdf = async (orderCode: string) => {
     try {
       const blob = await adminService.downloadOrderPdf(orderCode);
@@ -432,7 +447,14 @@ export default function AdminPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', flex: 1.5, minWidth: '400px' }}>
           
           <div style={cardStyle}>
-            <h3 style={{ color: '#D67026' }}>📊 Tablero Financiero Detallado</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#D67026' }}>📊 Tablero Financiero Detallado</h3>
+              {report.length > 0 && (
+                <button onClick={handleDownloadCsv} style={{ padding: '8px 12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', letterSpacing: '1px' }}>
+                  📥 Exportar CSV
+                </button>
+              )}
+            </div>
             {report.length === 0 ? <p style={{ color: '#B8B0A3' }}>No hay ventas confirmadas.</p> : (
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
                 <thead>
@@ -524,9 +546,10 @@ export default function AdminPage() {
               <button onClick={() => setSelectedOrderDetails(null)} style={{ backgroundColor: 'transparent', color: '#B8B0A3', border: 'none', fontSize: '1.5rem', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
             </div>
             
-            <p style={{ color: '#F5EFE6' }}><strong>Cliente / Contacto:</strong> {selectedOrderDetails.customerContact}</p>
-            <p style={{ color: '#F5EFE6' }}><strong>Estado:</strong> {getStatusStyle(selectedOrderDetails.status).text}</p>
-
+            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Cliente / Contacto:</strong> {selectedOrderDetails.customerContact}</p>
+            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Dirección de Entrega:</strong> {selectedOrderDetails.deliveryAddress}</p>
+            <p style={{ color: '#F5EFE6', margin: '5px 0' }}><strong>Estado:</strong> {getStatusStyle(selectedOrderDetails.status).text}</p>
+            
             <h3 style={{ marginTop: '20px', color: '#D67026' }}>Artículos a preparar:</h3>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
               <thead>

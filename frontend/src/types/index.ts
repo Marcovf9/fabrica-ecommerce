@@ -18,6 +18,7 @@ export interface CartItem {
 
 export interface OrderRequestDTO {
     customerContact: string;
+    deliveryAddress: string;
     items: {
         productId: number;
         quantity: number;
@@ -52,6 +53,7 @@ export interface OrderItemDetail {
 export interface OrderDetail {
     orderCode: string;
     customerContact: string;
+    deliveryAddress: string;
     status: string;
     totalSaleAmount: number;
     items: OrderItemDetail[];

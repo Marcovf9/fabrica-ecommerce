@@ -1,51 +1,37 @@
 package com.fabrica.ecommerce.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private final Path fileStorageLocation;
+    private final Cloudinary cloudinary;
 
-    public FileStorageService() {
-        this.fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(this.fileStorageLocation);
-        } catch (Exception ex) {
-            throw new RuntimeException("No se pudo crear el directorio donde se almacenarán los archivos subidos.", ex);
-        }
+    public FileStorageService(@Value("${cloudinary.url}") String cloudinaryUrl) {
+        this.cloudinary = new Cloudinary(cloudinaryUrl);
     }
 
     public String storeFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             return null;
         }
-        
-        // Normalizar nombre del archivo y generar ID único para evitar sobrescrituras
-        String originalFileName = org.springframework.util.StringUtils.cleanPath(file.getOriginalFilename());
-        String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
-        String newFileName = UUID.randomUUID().toString() + fileExtension;
 
         try {
-            if (newFileName.contains("..")) {
-                throw new RuntimeException("El nombre del archivo contiene una secuencia de ruta inválida " + newFileName);
-            }
-
-            Path targetLocation = this.fileStorageLocation.resolve(newFileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            // Retorna la ruta relativa que se guardará en la base de datos
-            return "/uploads/" + newFileName;
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "folder", "ritual_espacios",
+                    "public_id", UUID.randomUUID().toString()
+            ));
+            return uploadResult.get("secure_url").toString();
         } catch (IOException ex) {
-            throw new RuntimeException("No se pudo guardar el archivo " + newFileName + ". Por favor, inténtelo de nuevo.", ex);
+            throw new RuntimeException("Fallo crítico al subir el archivo a Cloudinary.", ex);
         }
     }
 }
