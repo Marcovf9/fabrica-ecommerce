@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import CatalogPage from './pages/CatalogPage';
 import AdminPage from './pages/AdminPage';
 import TrackingPage from './pages/TrackingPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
         <main style={{ flex: 1 }}>
           <Routes>
             <Route path="/" element={<CatalogPage />} />
+            <Route path="/producto/:sku" element={<ProductDetailPage />} />
             <Route path="/tracking" element={<TrackingPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/terminos" element={<div style={pagePlaceholder}><h2>Términos y Condiciones</h2><p>Documento en redacción...</p></div>} />

@@ -4,6 +4,7 @@ import type { Product, CartItem } from '../types'
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
+import { Link } from 'react-router-dom';
 
 function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -20,9 +21,6 @@ function CatalogPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
-  
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -136,17 +134,6 @@ function CatalogPage() {
     }
   };
 
-  const openProductModal = (product: Product) => {
-    setSelectedProduct(product);
-    setCurrentImageIndex(0);
-    document.body.style.overflow = 'hidden';
-  };
-
-  const closeProductModal = () => {
-    setSelectedProduct(null);
-    document.body.style.overflow = 'auto';
-  };
-
   if (loading) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#F5EFE6', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>Cargando Catálogo...</h2></div>
   if (error) return <div style={{ height: '100vh', backgroundColor: '#2B2522', color: '#e74c3c', display: 'flex', justifyContent: 'center', alignItems: 'center' }}><h2>{error}</h2></div>
 
@@ -210,18 +197,20 @@ function CatalogPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px', marginTop: '20px' }}>
                   {filteredProducts.filter(p => p.categoryName === category).map((product) => (
                     <div key={product.id} style={{ backgroundColor: '#3A322D', border: '1px solid #51433A', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div 
-                        onClick={() => openProductModal(product)}
-                        style={{ height: '280px', backgroundColor: '#1A1816', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}
+                      <Link 
+                        to={`/producto/${product.sku}`}
+                        style={{ height: '280px', backgroundColor: '#1A1816', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', textDecoration: 'none' }}
                       >
                         {product.imageUrls && product.imageUrls.length > 0 ? (
                           <img src={optimizeCloudinaryUrl(product.imageUrls[0], 400)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                           <span style={{ color: '#68594D', fontSize: '3rem' }}>📷</span>
                         )}
-                      </div>
+                      </Link>
                       <div style={{ padding: '20px' }}>
-                        <h3 style={{ margin: '0 0 5px 0', fontSize: '1.3rem', color: '#F5EFE6' }}>{product.name}</h3>
+                        <Link to={`/producto/${product.sku}`} style={{ textDecoration: 'none' }}>
+                          <h3 style={{ margin: '0 0 5px 0', fontSize: '1.3rem', color: '#F5EFE6' }}>{product.name}</h3>
+                        </Link>
                         <p style={{ margin: '0 0 15px 0', color: '#B8B0A3', fontSize: '0.85rem' }}>Stock disponible: {product.availableStock} unid.</p>
                         <h2 style={{ color: '#D67026', margin: '0 0 15px 0' }}>${product.salePrice.toLocaleString('es-AR')}</h2>
                         <button 
@@ -243,6 +232,7 @@ function CatalogPage() {
           )}
         </div>
 
+        {/* SIDEBAR CARRITO INTACTO */}
         <div style={{ flex: '1 1 350px', backgroundColor: '#3A322D', padding: '25px', borderRadius: '4px', border: '1px solid #51433A', position: 'sticky', top: '100px', maxHeight: 'calc(100vh - 140px)', overflowY: 'auto' }}>
           <h2 style={{ marginTop: 0, textTransform: 'uppercase', color: '#F5EFE6', letterSpacing: '1px' }}>Tu Pedido</h2>
           <hr style={{ borderColor: '#51433A', marginBottom: '20px' }} />
@@ -318,61 +308,6 @@ function CatalogPage() {
             </button>
           </div>
         </div>
-
-        {selectedProduct && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(26, 24, 22, 0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-            <div style={{ backgroundColor: '#3A322D', borderRadius: '4px', width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexWrap: 'wrap', border: '1px solid #51433A' }}>
-              
-              <div style={{ flex: '1 1 400px', backgroundColor: '#1A1816', position: 'relative', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {selectedProduct.imageUrls && selectedProduct.imageUrls.length > 0 ? (
-                  <>
-                    <img src={optimizeCloudinaryUrl(selectedProduct.imageUrls[currentImageIndex], 800)} alt="Detalle" style={{ width: '100%', maxHeight: '500px', objectFit: 'contain' }} />
-                    {selectedProduct.imageUrls.length > 1 && (
-                      <div style={{ position: 'absolute', bottom: '15px', display: 'flex', gap: '10px', width: '100%', justifyContent: 'center' }}>
-                        {selectedProduct.imageUrls.map((_, idx) => (
-                          <button 
-                            key={idx} 
-                            onClick={() => setCurrentImageIndex(idx)}
-                            style={{ width: '12px', height: '12px', borderRadius: '50%', border: 'none', backgroundColor: currentImageIndex === idx ? '#D67026' : '#68594D', cursor: 'pointer' }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <span style={{ color: '#68594D', fontSize: '4rem' }}>📷</span>
-                )}
-              </div>
-
-              <div style={{ flex: '1 1 350px', padding: '30px', position: 'relative' }}>
-                <button onClick={closeProductModal} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#B8B0A3', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
-                
-                <h2 style={{ color: '#F5EFE6', margin: '0 0 10px 0', fontSize: '2rem' }}>{selectedProduct.name}</h2>
-                <p style={{ color: '#D67026', fontSize: '1.8rem', fontWeight: 'bold', margin: '0 0 20px 0' }}>${selectedProduct.salePrice.toLocaleString('es-AR')}</p>
-                
-                <div style={{ backgroundColor: '#2B2522', padding: '15px', borderRadius: '2px', marginBottom: '20px', border: '1px solid #51433A' }}>
-                  <p style={{ color: '#B8B0A3', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                    {selectedProduct.description || "Sin descripción disponible."}
-                  </p>
-                </div>
-
-                <p style={{ color: '#B8B0A3', fontSize: '0.9rem' }}>Categoría: {selectedProduct.categoryName}</p>
-                <p style={{ color: '#B8B0A3', fontSize: '0.9rem', marginBottom: '30px' }}>Stock disponible: {selectedProduct.availableStock} unid.</p>
-
-                <button 
-                  onClick={() => { addToCart(selectedProduct); closeProductModal(); }}
-                  disabled={selectedProduct.availableStock <= 0}
-                  style={{ 
-                    padding: '15px', width: '100%', cursor: selectedProduct.availableStock > 0 ? 'pointer' : 'not-allowed', 
-                    backgroundColor: selectedProduct.availableStock > 0 ? '#D67026' : '#51433A', color: selectedProduct.availableStock > 0 ? '#F5EFE6' : '#B8B0A3', 
-                    border: 'none', borderRadius: '2px', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '1.1rem', letterSpacing: '1px'
-                  }}>
-                  {selectedProduct.availableStock > 0 ? 'Agregar al Pedido' : 'Sin Stock Físico'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   )
