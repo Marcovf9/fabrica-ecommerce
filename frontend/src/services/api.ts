@@ -120,3 +120,11 @@ export const leadService = {
         return response.data;
     }
 };
+
+export const shippingService = {
+  calculate: async (zip: string, totalItems: number) => {
+    const response = await fetch(`http://localhost:8080/api/shipping/calculate?zip=${zip}&totalItems=${totalItems}`);
+    if (!response.ok) throw new Error('Error al cotizar envío');
+    return response.json();
+  }
+};

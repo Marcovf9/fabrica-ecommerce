@@ -26,6 +26,10 @@ public class AbandonedCart {
     @Column(name = "recovered")
     private boolean recovered = false;
 
+    @Column(nullable = false)
+    private boolean notified = false;
+
+
     @PrePersist
     @PreUpdate
     protected void onSave() {
@@ -40,6 +44,8 @@ public class AbandonedCart {
     public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
     public String getCartContent() { return cartContent; }
     public void setCartContent(String cartContent) { this.cartContent = cartContent; }
+    public boolean isNotified() { return notified; }
+    public void setNotified(boolean notified) { this.notified = notified; }
     public LocalDateTime getCapturedAt() { return capturedAt; }
     public void setCapturedAt(LocalDateTime capturedAt) { this.capturedAt = capturedAt; }
     public boolean isRecovered() { return recovered; }

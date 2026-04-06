@@ -3,6 +3,7 @@ package com.fabrica.ecommerce.service;
 import com.fabrica.ecommerce.exception.InsufficientStockException;
 import com.fabrica.ecommerce.model.*;
 import com.fabrica.ecommerce.repository.*;
+import com.fabrica.ecommerce.controller.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class OrderService {
     private final OrderItemBatchAllocationRepository allocationRepository;
     private final ProductRepository productRepository;
     private final EmailService emailService;
+    private final ShippingService shippingService;
 
     @Value("${spring.mail.username:ritualparrillas@gmail.com}")
     private String adminEmail;
@@ -75,22 +77,26 @@ public class OrderService {
         order.setTotalSaleAmount(BigDecimal.ZERO);
         order = orderRepository.save(order);
 
-        BigDecimal totalSale = BigDecimal.ZERO;
+        int totalItems = request.items().stream().mapToInt(OrderItemRequestDTO::quantity).sum();
+        String zip = "0000";
+        try {
+            zip = request.deliveryAddress().split("CP: ")[1].split(",")[0].trim();
+        } catch (Exception e) { System.err.println("No se pudo extraer CP"); }
+
+        BigDecimal shippingCost = shippingService.calculateShipping(zip, totalItems);
+        BigDecimal totalSale = shippingCost;
 
         for (OrderItemRequestDTO itemDto : request.items()) {
             Product product = productRepository.findById(itemDto.productId())
                     .orElseThrow(() -> new IllegalArgumentException("Producto inválido"));
 
-            if (!product.getIsActive()) {
-                throw new IllegalStateException("El producto no está activo.");
-            }
+            if (!product.getIsActive()) throw new IllegalStateException("El producto no está activo.");
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
             orderItem.setQuantity(itemDto.quantity());
             orderItem.setUnitPrice(product.getSalePrice()); 
-
             orderItemRepository.save(orderItem);
 
             BigDecimal itemTotal = product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
@@ -100,15 +106,15 @@ public class OrderService {
         order.setTotalSaleAmount(totalSale);
         Order savedOrder = orderRepository.save(order);
 
-        // CORREO AL CLIENTE: Pedido Registrado
+        // CORREO AL CLIENTE ACTUALIZADO
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
-            String content = "<p style='font-size: 16px;'>Hemos registrado exitosamente tu solicitud de compra por un total de <b>$" + totalSale + "</b>.</p>" +
+            String content = "<p style='font-size: 16px;'>Hemos registrado tu solicitud de compra por un total de <b>$" + totalSale + "</b> (Costo de envío estimado incluido).</p>" +
                              "<p style='font-size: 16px;'>El stock de tu pedido ha sido bloqueado temporalmente a tu nombre en nuestra planta.</p>" +
                              "<div style='background-color: #F8D7DA; color: #721C24; padding: 15px; border-left: 4px solid #D67026; margin: 25px 0; font-size: 14px;'>" +
                              "<strong>⚠️ Importante:</strong> El pedido no será procesado ni despachado hasta que te comuniques por nuestro canal de WhatsApp para coordinar y validar el pago correspondiente." +
                              "</div>" +
-                             "<p style='font-size: 16px;'>Utiliza el botón inferior para conocer el estado en tiempo real de la operación.</p>";
+                             "<p style='font-size: 16px;'>Utiliza el botón inferior para conocer el estado de la operación.</p>";
             
             emailService.sendHtmlEmail(email, "Pedido Registrado #" + savedOrder.getOrderCode() + " - Ritual Espacios", buildProfessionalEmail("Confirmación de Pedido", content, savedOrder.getOrderCode()));
         }

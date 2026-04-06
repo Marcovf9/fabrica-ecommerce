@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { catalogService, orderService, leadService } from '../services/api';
+import { catalogService, orderService, leadService, shippingService } from '../services/api';
 import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
@@ -23,6 +23,8 @@ export default function CatalogPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
 
+  const [shippingCost, setShippingCost] = useState(0);
+
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
@@ -35,6 +37,22 @@ export default function CatalogPage() {
   }, []);
 
   useEffect(() => { localStorage.setItem('fabrica_cart', JSON.stringify(cart)); }, [cart]);
+
+  useEffect(() => {
+    const calculateShipping = async () => {
+      if (customer.zip.trim().length >= 4 && cart.length > 0) {
+        try {
+          const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+          const cost = await shippingService.calculate(customer.zip, totalItems);
+          setShippingCost(cost);
+        } catch (err) { setShippingCost(0); }
+      } else {
+        setShippingCost(0);
+      }
+    };
+    const timeoutId = setTimeout(calculateShipping, 500);
+    return () => clearTimeout(timeoutId);
+  }, [customer.zip, cart]);
 
   const addToCart = (product: Product) => {
     if (product.availableStock <= 0) return Swal.fire({ icon: 'error', title: 'Agotado', text: `El producto no tiene stock disponible.` });
@@ -97,7 +115,7 @@ export default function CatalogPage() {
       const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
       if ((window as any).fbq) { (window as any).fbq('track', 'Purchase', { value: cartTotal, currency: 'ARS' }); }
 
-      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode} por $${cartTotal.toLocaleString('es-AR')}. Mi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
+      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode}. Subtotal: $${cartSubtotal.toLocaleString('es-AR')}. Envío cotizado a CP ${customer.zip}: $${shippingCost.toLocaleString('es-AR')}. Total a transferir: $${finalTotal.toLocaleString('es-AR')}. Mi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
       const waUrl = `https://wa.me/5493517150510?text=${encodeURIComponent(waMessage)}`;
 
       Swal.fire({
@@ -121,6 +139,9 @@ export default function CatalogPage() {
     return matchesSearch && (selectedCategory === 'Todas' || p.categoryName === selectedCategory);
   });
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
+
+const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
+const finalTotal = cartSubtotal + shippingCost;
 
   return (
     <>
@@ -221,13 +242,19 @@ export default function CatalogPage() {
           )}
           
           <div className="border-t border-brand-border pt-4 mb-6">
-            <h3 className="text-2xl font-black text-brand-dark flex justify-between">
-              <span>Total:</span> <span>${cartTotal.toLocaleString('es-AR')}</span>
+            <div className="flex justify-between text-brand-dark mb-2 text-sm font-bold">
+              <span>Subtotal:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
+            </div>
+            <div className="flex justify-between text-brand-muted mb-4 text-sm">
+              <span>Envío (Est.):</span> <span>{shippingCost > 0 ? `$${shippingCost.toLocaleString('es-AR')}` : 'A calcular (Ingresa C.P.)'}</span>
+            </div>
+            <h3 className="text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
+              <span>Total:</span> <span>${finalTotal.toLocaleString('es-AR')}</span>
             </h3>
           </div>
           
           <div className="space-y-4">
-            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2">Contacto Administrativo</h4>
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2">Contacto</h4>
             
             <div className="grid grid-cols-2 gap-3">
               <div>
