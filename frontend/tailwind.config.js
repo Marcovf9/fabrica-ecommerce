@@ -8,13 +8,12 @@ export default {
     extend: {
       colors: {
         brand: {
-          dark: '#1A1816',
-          panel: '#2B2522',
-          card: '#3A322D',
-          border: '#51433A',
+          light: '#FFFFFF',
+          gray: '#F9FAFB',
+          border: '#E5E7EB',
+          dark: '#111827',
+          muted: '#6B7280',
           primary: '#D67026',
-          text: '#F5EFE6',
-          muted: '#B8B0A3'
         }
       }
     },
