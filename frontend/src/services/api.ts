@@ -1,8 +1,10 @@
 import axios from 'axios';
 import type { Product, OrderRequestDTO, ProfitabilityReport, Order, OrderDetail } from '../types';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
 export const apiClient = axios.create({
-    baseURL: 'http://localhost:8080/api',
+    baseURL: `${API_BASE_URL}/api`,
     headers: {
         'Content-Type': 'application/json'
     }
@@ -123,7 +125,7 @@ export const leadService = {
 
 export const shippingService = {
   calculate: async (zip: string, totalItems: number) => {
-    const response = await fetch(`http://localhost:8080/api/shipping/calculate?zip=${zip}&totalItems=${totalItems}`);
+    const response = await fetch(`${API_BASE_URL}/api/shipping/calculate?zip=${zip}&totalItems=${totalItems}`);
     if (!response.ok) throw new Error('Error al cotizar envío');
     return response.json();
   }
