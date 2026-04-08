@@ -47,9 +47,11 @@ export const orderService = {
 
 export const adminService = {
     createProduct: async (formData: FormData) => {
-        const response = await apiClient.post('/products', formData, {
+        const token = localStorage.getItem('admin_token');
+        
+        const response = await axios.post(`${apiClient.defaults.baseURL}/products`, formData, {
             headers: {
-                'Content-Type': 'multipart/form-data'
+                'Authorization': `Bearer ${token}`
             }
         });
         return response.data;

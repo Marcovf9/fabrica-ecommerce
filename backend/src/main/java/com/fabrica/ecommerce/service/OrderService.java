@@ -3,7 +3,6 @@ package com.fabrica.ecommerce.service;
 import com.fabrica.ecommerce.exception.InsufficientStockException;
 import com.fabrica.ecommerce.model.*;
 import com.fabrica.ecommerce.repository.*;
-import com.fabrica.ecommerce.controller.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
