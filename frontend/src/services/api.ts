@@ -47,7 +47,11 @@ export const orderService = {
 
 export const adminService = {
     createProduct: async (formData: FormData) => {
-        const response = await apiClient.post('/products', formData);
+        const response = await apiClient.post('/products', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
         return response.data;
     },
     updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, description: string, salePrice: number }) => {
