@@ -132,7 +132,6 @@ export default function CatalogPage() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-brand-gray"><div className="animate-spin text-brand-primary"><PackageOpen size={48} /></div></div>;
   if (error) return <div className="h-screen flex items-center justify-center bg-brand-gray text-red-500"><h2>{error}</h2></div>;
 
-  const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
   const allCategories = ['Todas', ...Array.from(new Set(products.map(p => p.categoryName)))];
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
