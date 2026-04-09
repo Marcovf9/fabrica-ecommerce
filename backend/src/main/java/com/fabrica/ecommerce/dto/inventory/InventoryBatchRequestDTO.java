@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 public record InventoryBatchRequestDTO(
         @NotNull(message = "El producto es obligatorio") Long productId,
+        @NotNull (message = "Las medidas son obligatorias")String size,
         @NotNull(message = "La cantidad es obligatoria") 
         @Min(value = 1, message = "Debe producir al menos 1 unidad") Integer quantityProduced,
         @NotNull(message = "El costo total del lote es obligatorio") 

@@ -7,5 +7,6 @@ public record OrderItemDetailDTO(
         String sku,
         Integer quantity,
         BigDecimal unitPrice,
-        BigDecimal subTotal
+        BigDecimal subTotal,
+        String size
 ) {}

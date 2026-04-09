@@ -37,11 +37,10 @@ public class OrderService {
         }
     }
 
-    // MOTOR DE PLANTILLAS INSTITUCIONALES PARA CLIENTES
     private String buildProfessionalEmail(String title, String mainContent, String trackingCode) {
         String trackingButton = trackingCode != null ? 
             "<div style='text-align: center; margin-top: 30px;'>" +
-            "  <a href='http://localhost:5173/tracking?code=" + trackingCode + "' style='background-color: #D67026; color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block; text-transform: uppercase; letter-spacing: 1px;'>Rastrear mi pedido</a>" +
+            "  <a href='https://ritualespacios.com/tracking?code=" + trackingCode + "' style='background-color: #D67026; color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block; text-transform: uppercase; letter-spacing: 1px;'>Rastrear mi pedido</a>" +
             "</div>" : "";
 
         return "<div style=\"font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #3A322D; border-radius: 8px; overflow: hidden; background-color: #F5EFE6;\">" +
@@ -96,6 +95,10 @@ public class OrderService {
             orderItem.setProduct(product);
             orderItem.setQuantity(itemDto.quantity());
             orderItem.setUnitPrice(product.getSalePrice()); 
+            
+            // ASIGNACIÓN DE LA MEDIDA AL ÍTEM
+            orderItem.setSize(itemDto.size()); 
+            
             orderItemRepository.save(orderItem);
 
             BigDecimal itemTotal = product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
@@ -105,7 +108,6 @@ public class OrderService {
         order.setTotalSaleAmount(totalSale);
         Order savedOrder = orderRepository.save(order);
 
-        // CORREO AL CLIENTE ACTUALIZADO
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
             String content = "<p style='font-size: 16px;'>Hemos registrado tu solicitud de compra por un total de <b>$" + totalSale + "</b> (Costo de envío estimado incluido).</p>" +
@@ -118,7 +120,6 @@ public class OrderService {
             emailService.sendHtmlEmail(email, "Pedido Registrado #" + savedOrder.getOrderCode() + " - Ritual Espacios", buildProfessionalEmail("Confirmación de Pedido", content, savedOrder.getOrderCode()));
         }
 
-        // ALERTA INTERNA PARA LA GERENCIA
         String adminHtmlBody = "<div style='font-family: Arial, sans-serif; color: #333;'>" +
             "<h2 style='color: #D67026;'>🚨 NUEVO PEDIDO PENDIENTE: #" + savedOrder.getOrderCode() + "</h2>" +
             "<p><strong>Total a cobrar:</strong> $" + totalSale + "</p>" +
@@ -149,7 +150,7 @@ public class OrderService {
             BigDecimal itemTotalCost = BigDecimal.ZERO;
 
             List<InventoryBatch> availableBatches = inventoryBatchRepository
-                    .findAvailableBatchesForProduct(item.getProduct().getId());
+            .findAvailableBatchesForProductAndSize(item.getProduct().getId(), item.getSize());
 
             for (InventoryBatch batch : availableBatches) {
                 if (quantityToFulfill == 0) break;
@@ -182,7 +183,6 @@ public class OrderService {
             orderItemRepository.save(item);
             totalOrderCost = totalOrderCost.add(itemTotalCost);
 
-            // AUDITORÍA DE STOCK CRÍTICO
             long remainingPhysicalStock = inventoryBatchRepository
                     .findAvailableBatchesForProduct(item.getProduct().getId())
                     .stream().mapToLong(InventoryBatch::getQuantityRemaining).sum();
@@ -199,7 +199,6 @@ public class OrderService {
         order.setStatus(Order.OrderStatus.PAID);
         Order savedOrder = orderRepository.save(order);
 
-        // CORREO AL CLIENTE: Pago Confirmado
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
             String content = "<p style='font-size: 16px;'>Hemos validado tu pago exitosamente. La compra está asegurada.</p>" +
@@ -222,7 +221,6 @@ public class OrderService {
         order.setStatus(Order.OrderStatus.SHIPPED);
         Order savedOrder = orderRepository.save(order);
 
-        // CORREO AL CLIENTE: Despachado
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
             String content = "<p style='font-size: 16px;'>¡Tus estructuras están en camino!</p>" +
@@ -246,7 +244,6 @@ public class OrderService {
         order.setStatus(Order.OrderStatus.CANCELLED);
         Order savedOrder = orderRepository.save(order);
 
-        // CORREO AL CLIENTE: Cancelado
         String email = extractEmail(savedOrder.getCustomerContact());
         if (email != null) {
             String content = "<p style='font-size: 16px;'>Te informamos que tu pedido ha sido cancelado en nuestro sistema administrativo.</p>" +
@@ -274,7 +271,8 @@ public class OrderService {
                         item.getProduct().getSku(),
                         item.getQuantity(),
                         item.getUnitPrice(),
-                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
+                        item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())),
+                        item.getSize() // <-- Tamaño expuesto hacia el frontend
                 )).toList();
         
         return new com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO(

@@ -30,4 +30,8 @@ public class OrderItem {
     // Es nulo en PENDING. Se llena al confirmar la venta basado en los lotes consumidos.
     @Column(name = "unit_cost", precision = 10, scale = 2)
     private BigDecimal unitCost;
+
+    @Column(name = "size")
+    private String size;
+
 }

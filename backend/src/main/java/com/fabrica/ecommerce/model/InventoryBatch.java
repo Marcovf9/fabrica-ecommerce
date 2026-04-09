@@ -34,4 +34,7 @@ public class InventoryBatch {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "size")
+    private String size;
 }

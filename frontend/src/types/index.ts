@@ -6,14 +6,20 @@ export interface Product {
     name: string;
     description: string;
     salePrice: number;
-    availableStock: number;
     isActive: boolean;
     imageUrls: string[];
+    sizes: SizeStock[];
+}
+
+export interface SizeStock {
+    size: string;
+    stock: number;
 }
 
 export interface CartItem {
     product: Product;
     quantity: number;
+    size: string;
 }
 
 export interface OrderRequestDTO {
@@ -22,6 +28,7 @@ export interface OrderRequestDTO {
     items: {
         productId: number;
         quantity: number;
+        size: string;
     }[];
 }
 
@@ -48,6 +55,7 @@ export interface OrderItemDetail {
     quantity: number;
     unitPrice: number;
     subTotal: number;
+    size: string;
 }
 
 export interface OrderDetail {

@@ -60,7 +60,7 @@ export const adminService = {
         const response = await apiClient.put(`/products/${id}`, productData);
         return response.data;
     },
-    registerBatch: async (batchData: { productId: number, quantityProduced: number, totalBatchCost: number }) => {
+    registerBatch: async (batchData: { productId: number, size: string, quantityProduced: number, totalBatchCost: number }) => {
         const response = await apiClient.post('/inventory/batches', batchData);
         return response.data;
     },

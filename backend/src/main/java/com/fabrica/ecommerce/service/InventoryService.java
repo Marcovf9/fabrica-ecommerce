@@ -29,6 +29,7 @@ public class InventoryService {
 
         InventoryBatch batch = new InventoryBatch();
         batch.setProduct(product);
+        batch.setSize(request.size());
         batch.setQuantityProduced(request.quantityProduced());
         batch.setQuantityRemaining(request.quantityProduced());
         batch.setUnitCost(unitCost);

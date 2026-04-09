@@ -24,7 +24,6 @@ public class OrderItemBatchAllocation {
     @Column(name = "quantity_allocated", nullable = false)
     private Integer quantityAllocated;
 
-    // Snapshot estricto del costo en el momento exacto de la asignación.
     @Column(name = "cost_at_allocation", nullable = false, precision = 10, scale = 2)
     private BigDecimal costAtAllocation;
 }

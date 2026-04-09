@@ -9,5 +9,7 @@ public record OrderItemRequestDTO(
         
         @NotNull(message = "La cantidad es obligatoria")
         @Min(value = 1, message = "La cantidad mínima es 1")
-        Integer quantity
+        Integer quantity,
+
+        String size
 ) {}

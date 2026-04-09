@@ -1,10 +1,13 @@
 package com.fabrica.ecommerce.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "abandoned_carts")
+@Data
 public class AbandonedCart {
 
     @Id
@@ -29,25 +32,9 @@ public class AbandonedCart {
     @Column(nullable = false)
     private boolean notified = false;
 
-
     @PrePersist
     @PreUpdate
     protected void onSave() {
         capturedAt = LocalDateTime.now();
     }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public String getCustomerEmail() { return customerEmail; }
-    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
-    public String getCustomerPhone() { return customerPhone; }
-    public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
-    public String getCartContent() { return cartContent; }
-    public void setCartContent(String cartContent) { this.cartContent = cartContent; }
-    public boolean isNotified() { return notified; }
-    public void setNotified(boolean notified) { this.notified = notified; }
-    public LocalDateTime getCapturedAt() { return capturedAt; }
-    public void setCapturedAt(LocalDateTime capturedAt) { this.capturedAt = capturedAt; }
-    public boolean isRecovered() { return recovered; }
-    public void setRecovered(boolean recovered) { this.recovered = recovered; }
 }

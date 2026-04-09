@@ -1,0 +1,1 @@
+ALTER TABLE inventory_batches ADD COLUMN size VARCHAR(255) DEFAULT 'Estándar';
