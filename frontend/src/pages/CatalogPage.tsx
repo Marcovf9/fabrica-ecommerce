@@ -147,9 +147,10 @@ export default function CatalogPage() {
       const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
       if ((window as any).fbq) { (window as any).fbq('track', 'Purchase', { value: cartTotal, currency: 'ARS' }); }
 
-      const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('%0A');
-      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode}.%0A%0AArtículos:%0A${itemsList}%0A%0ASubtotal: $${cartSubtotal.toLocaleString('es-AR')}.%0AEnvío cotizado a CP ${customer.zip}: $${shippingCost.toLocaleString('es-AR')}.%0ATotal a transferir: $${finalTotal.toLocaleString('es-AR')}.%0AMi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
-      const waUrl = `https://wa.me/5493517150510?text=${encodeURIComponent(waMessage)}`;
+      const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
+      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode}.\n\nArtículos:\n${itemsList}\n\nSubtotal: $${cartSubtotal.toLocaleString('es-AR')}.\nEnvío cotizado a CP ${customer.zip}: $${shippingCost.toLocaleString('es-AR')}.\nTotal a transferir: $${finalTotal.toLocaleString('es-AR')}.\nMi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
+      
+      const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
 
       Swal.fire({
         icon: 'success', title: '¡Pedido Registrado!',
