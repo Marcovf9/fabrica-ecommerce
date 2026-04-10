@@ -34,6 +34,7 @@ El proyecto está dividido en dos aplicaciones independientes que se comunican m
 4. **Recuperación de Carritos:** Captura silenciosa (`onBlur`) de correos y teléfonos para registrar intentos de compra inconclusos.
 5. **Dashboard Financiero:** Cálculo automatizado de costos de producción vs. ingresos por ventas (Reporte de Rentabilidad).
 6. **Manejo de Estados de Pedido:** Flujo de auditoría desde PENDIENTE -> PAGADO -> DESPACHADO, con impacto directo en la reducción del stock del galpón.
+7. **Diseño Accesible (UX/UI):** Interfaz pensada para la usabilidad universal, incluyendo menú responsivo intuitivo y una guía visual paso a paso de "Cómo Comprar" integrada al flujo principal.
 
 ## 🌍 Entorno de Producción y Despliegue
 
