@@ -16,7 +16,7 @@ export default function AdminPage() {
   
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetail | null>(null);
 
-  const [newProduct, setNewProduct] = useState({ categoryId: 1, name: '', description: '', salePrice: '', sizes: '' });
+  const [newProduct, setNewProduct] = useState({ categoryId: 1, name: '', description: '', salePrice: '', originalPrice: '', sizes: '', isFeatured: false });
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [newBatch, setNewBatch] = useState({ productId: 0, size: '', quantityProduced: '', totalBatchCost: '' });
 
@@ -64,7 +64,12 @@ export default function AdminPage() {
     formData.append('name', newProduct.name); 
     formData.append('description', newProduct.description); 
     formData.append('salePrice', newProduct.salePrice.toString());
+    formData.append('isFeatured', newProduct.isFeatured.toString());
     
+    if (newProduct.originalPrice) {
+      formData.append('originalPrice', newProduct.originalPrice.toString());
+    }
+
     if (newProduct.sizes) {
       const sizesArray = newProduct.sizes.split(',').map(s => s.trim()).filter(s => s !== "");
       sizesArray.forEach(size => formData.append('sizes', size));
@@ -74,7 +79,7 @@ export default function AdminPage() {
     try { 
       await adminService.createProduct(formData); 
       Swal.fire({ icon: 'success', title: '¡Agregado!', html: `SKU: <b>${generatedSku}</b>` }); 
-      setNewProduct({ categoryId: 1, name: '', description: '', salePrice: '', sizes: '' }); 
+      setNewProduct({ categoryId: 1, name: '', description: '', salePrice: '', originalPrice: '', sizes: '' , isFeatured: false}); 
       setImageFiles(null); 
       const fileInput = document.getElementById('file-upload') as HTMLInputElement; 
       if (fileInput) fileInput.value = ''; 
@@ -119,8 +124,66 @@ export default function AdminPage() {
   };
 
   const handleEditPrice = async (product: Product) => {
-    const { value: newPrice } = await Swal.fire({ title: `Modificar Precio`, text: `${product.name}`, input: 'number', inputValue: product.salePrice, showCancelButton: true, confirmButtonColor: '#D67026' });
-    if (newPrice) { try { const catId = product.categoryName.includes('Plástico') ? 1 : 2; await adminService.updateProduct(product.id, { categoryId: catId, sku: product.sku, name: product.name, salePrice: Number(newPrice), description: product.description }); Swal.fire({ icon: 'success', title: 'Actualizado', timer: 2000, showConfirmButton: false }); loadProducts(); } catch (error) { handleApiError(error); } }
+    const { value: formValues } = await Swal.fire({
+      title: 'Gestionar Precios',
+      html:
+        `<div class="flex flex-col gap-4 text-left p-2">` +
+          `<div>` +
+            `<label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Precio de Venta (Real)</label>` +
+            `<input id="swal-salePrice" class="swal2-input !m-0 !w-full !text-sm" type="number" placeholder="Precio actual" value="${product.salePrice}">` +
+          `</div>` +
+          `<div>` +
+            `<label class="text-[10px] font-bold uppercase text-brand-primary mb-1 block">Precio Original (Para tacho/descuento)</label>` +
+            `<input id="swal-originalPrice" class="swal2-input !m-0 !w-full !text-sm" type="number" placeholder="Ej: 200000" value="${product.originalPrice || ''}">` +
+            `<p class="text-[9px] text-gray-400 mt-1">* Dejar vacío para quitar el descuento.</p>` +
+          `</div>` +
+        `</div>`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar Cambios',
+      confirmButtonColor: '#D67026',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const salePrice = (document.getElementById('swal-salePrice') as HTMLInputElement).value;
+        const originalPrice = (document.getElementById('swal-originalPrice') as HTMLInputElement).value;
+        
+        if (!salePrice) {
+          Swal.showValidationMessage('El precio de venta es obligatorio');
+          return false;
+        }
+        return {
+          salePrice: Number(salePrice),
+          originalPrice: originalPrice ? Number(originalPrice) : undefined
+        };
+      }
+    });
+
+    if (formValues) {
+      try {
+        let catId = 1;
+        switch(product.categoryName) {
+          case 'Parrillas': catId = 1; break;
+          case 'Chulengos': catId = 2; break;
+          case 'Accesorios': catId = 3; break;
+          case 'Fogoneros': catId = 4; break;
+          case 'Muebles de exterior sostenibles': catId = 5; break;
+        }
+
+        await adminService.updateProduct(product.id, { 
+          categoryId: catId, 
+          sku: product.sku, 
+          name: product.name, 
+          description: product.description,
+          salePrice: formValues.salePrice,
+          originalPrice: formValues.originalPrice
+        });
+        
+        Swal.fire({ icon: 'success', title: 'Precios Actualizados', timer: 1500, showConfirmButton: false });
+        loadProducts();
+      } catch (error) { 
+        handleApiError(error); 
+      }
+    }
   };
 
   const handleDeleteProduct = async (product: Product) => {
@@ -211,20 +274,39 @@ export default function AdminPage() {
             <h3 className="text-brand-primary font-bold text-sm md:text-base uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2"><Tag size={16}/> Nuevo Producto</h3>
             <form onSubmit={handleCreateProduct}>
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Categoría</label>
-              <select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none">
-                <option value={1}>Muebles de Exterior Sostenibles (Plástico)</option>
-                <option value={2}>Parrillas y Fogoneros Pesados (Hierro)</option>
-              </select>
+<select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none">
+  <option value={1}>Parrillas</option>
+  <option value={2}>Chulengos</option>
+  <option value={3}>Accesorios</option>
+  <option value={4}>Fogoneros</option>
+  <option value={5}>Muebles de exterior sostenibles</option>
+</select>
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Nombre</label>
               <input required type="text" placeholder="Ej: Fogonero XL" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none" />
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Descripción</label>
               <textarea required placeholder="Especificaciones..." value={newProduct.description} onChange={(e) => setNewProduct({...newProduct, description: e.target.value})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none min-h-[80px] md:min-h-[100px]" />
-              <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Precio de Venta ($)</label>
-              <input required type="number" placeholder="Ej: 150000" value={newProduct.salePrice} onChange={(e) => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none" />
+              
+              <div className="flex gap-4 mb-3 md:mb-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Precio de Venta (Real) *</label>
+                  <input required type="number" placeholder="Ej: 150000" value={newProduct.salePrice} onChange={(e) => setNewProduct({...newProduct, salePrice: e.target.value})} className="w-full p-2 md:p-3 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2 text-brand-primary">Precio Original (Tachado)</label>
+                  <input type="number" placeholder="Opc. Ej: 200000" value={newProduct.originalPrice} onChange={(e) => setNewProduct({...newProduct, originalPrice: e.target.value})} className="w-full p-2 md:p-3 text-xs md:text-sm bg-white border border-brand-primary/30 rounded text-brand-dark outline-none focus:border-brand-primary" />
+                </div>
+              </div>
+
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Medidas Opcionales (Separa por comas)</label>
               <input type="text" placeholder="Ej: 80cm, 100cm, 120cm" value={newProduct.sizes} onChange={(e) => setNewProduct({...newProduct, sizes: e.target.value})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none" />
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Fotografías</label>
               <input id="file-upload" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(e.target.files)} className="w-full p-1.5 md:p-2 mb-4 md:mb-6 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark" />
+              <div className="mb-6 p-3 border border-brand-primary/30 bg-orange-50 rounded-lg">
+  <label className="flex items-center gap-3 cursor-pointer">
+    <input type="checkbox" checked={newProduct.isFeatured} onChange={(e) => setNewProduct({...newProduct, isFeatured: e.target.checked})} className="w-5 h-5 text-brand-primary accent-brand-primary cursor-pointer" />
+    <span className="text-xs md:text-sm font-bold uppercase text-brand-dark tracking-wider">🌟 Mostrar en sección de Destacados</span>
+  </label>
+</div>
               <button type="submit" className="w-full py-2 md:py-3 text-xs md:text-sm bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase rounded-lg transition-colors tracking-wider">Crear Producto</button>
             </form>
           </div>
@@ -277,7 +359,16 @@ export default function AdminPage() {
                           <span className="text-brand-dark font-bold block text-xs md:text-base whitespace-normal min-w-[120px]">{p.name}</span>
                           <span className="text-brand-muted text-[10px] md:text-xs">{p.sku} (Total: {totalStock})</span>
                         </td>
-                        <td className="p-2 md:p-3 border-b border-brand-border text-brand-primary font-bold text-xs md:text-base">${p.salePrice.toLocaleString('es-AR')}</td>
+                        <td className="p-2 md:p-3 border-b border-brand-border">
+                          {p.originalPrice && p.originalPrice > p.salePrice && (
+                            <span className="text-[9px] md:text-[10px] text-brand-muted line-through block">
+                              ${p.originalPrice.toLocaleString('es-AR')}
+                            </span>
+                          )}
+                          <span className="text-brand-primary font-bold text-xs md:text-base">
+                            ${p.salePrice.toLocaleString('es-AR')}
+                          </span>
+                        </td>
                         <td className="p-2 md:p-3 border-b border-brand-border">
                           <div className="flex gap-1 md:gap-2">
                             <button onClick={() => handleEditPrice(p)} className="px-2 md:px-3 py-1 md:py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded text-[10px] md:text-xs font-bold transition-colors">Editar</button>

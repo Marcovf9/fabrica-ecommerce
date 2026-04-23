@@ -36,10 +36,12 @@ public class ProductController {
             @RequestParam("name") String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam("salePrice") BigDecimal salePrice,
+            @RequestParam(value = "originalPrice", required = false) BigDecimal originalPrice,
             @RequestParam(value = "sizes", required = false) List<String> sizes,
-            @RequestParam(value = "images", required = false) MultipartFile[] images) { 
+            @RequestParam(value = "images", required = false) MultipartFile[] images,
+            @RequestParam(value = "isFeatured", defaultValue = "false") Boolean isFeatured) {
             
-        return new ResponseEntity<>(productService.createProduct(categoryId, sku, name, description, salePrice, sizes, images), HttpStatus.CREATED);
+        return new ResponseEntity<>(productService.createProduct(categoryId, sku, name, description, salePrice, originalPrice, sizes, images, isFeatured), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
@@ -51,7 +53,16 @@ public class ProductController {
         List<SizeStockDTO> sizeStockDTOs = p.getSizes().stream().map(size -> new SizeStockDTO(size, 0L)).collect(Collectors.toList());
 
         return ResponseEntity.ok(new ProductResponseDTO(
-                p.getId(), p.getSku(), p.getName(), p.getDescription(), p.getSalePrice(), p.getCategory().getName(), imageUrls, sizeStockDTOs
+                p.getId(), 
+                p.getSku(), 
+                p.getName(), 
+                p.getDescription(), 
+                p.getSalePrice(), 
+                p.getCategory().getName(), 
+                imageUrls, 
+                sizeStockDTOs, 
+                p.getOriginalPrice(),
+                p.isFeatured()
         ));
     }
     

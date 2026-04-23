@@ -56,7 +56,7 @@ export const adminService = {
         });
         return response.data;
     },
-    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, description: string, salePrice: number }) => {
+    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, description: string, salePrice: number, originalPrice?: number }) => {
         const response = await apiClient.put(`/products/${id}`, productData);
         return response.data;
     },

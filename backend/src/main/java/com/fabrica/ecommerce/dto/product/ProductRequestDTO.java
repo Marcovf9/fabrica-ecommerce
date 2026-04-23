@@ -1,5 +1,6 @@
 package com.fabrica.ecommerce.dto.product;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import jakarta.validation.constraints.Min;
@@ -13,5 +14,6 @@ public record ProductRequestDTO(
         String description,
         @NotNull(message = "El precio es obligatorio") 
         @Min(value = 0, message = "El precio no puede ser negativo") java.math.BigDecimal salePrice,
-        List<String> sizes
+        List<String> sizes,
+        BigDecimal originalPrice
 ) {}

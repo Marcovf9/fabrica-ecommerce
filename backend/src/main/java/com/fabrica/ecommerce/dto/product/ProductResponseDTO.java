@@ -11,5 +11,7 @@ public record ProductResponseDTO(
         BigDecimal salePrice,
         String categoryName,
         List<String> imageUrls,
-        List<SizeStockDTO> sizes
+        List<SizeStockDTO> sizes,
+        BigDecimal originalPrice,
+        Boolean isFeatured
 ) {}

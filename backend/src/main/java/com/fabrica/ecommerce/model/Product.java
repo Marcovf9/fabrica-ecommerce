@@ -42,4 +42,9 @@ public class Product {
     @Column(name = "size")
     private List<String> sizes = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean isFeatured;
+
+    @Column(name = "original_price")
+    private BigDecimal originalPrice;
 }

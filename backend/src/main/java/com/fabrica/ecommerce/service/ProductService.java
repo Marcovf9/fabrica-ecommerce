@@ -41,14 +41,22 @@ public class ProductService {
             }).toList();
                 
             return new ProductResponseDTO(
-                p.getId(), p.getSku(), p.getName(), p.getDescription(), 
-                p.getSalePrice(), p.getCategory().getName(), imageUrls, sizeStockList
+                p.getId(), 
+                p.getSku(), 
+                p.getName(), 
+                p.getDescription(), 
+                p.getSalePrice(), 
+                p.getCategory().getName(), 
+                imageUrls, 
+                sizeStockList,
+                p.getOriginalPrice(),
+                p.isFeatured()
             );
         }).toList();
     }
 
     @Transactional
-    public Product createProduct(Long categoryId, String sku, String name, String description, BigDecimal salePrice, List<String> sizes, MultipartFile[] images) {
+    public Product createProduct(Long categoryId, String sku, String name, String description, BigDecimal salePrice, BigDecimal originalPrice, List<String> sizes, MultipartFile[] images, Boolean isFeatured) { // <--- AGREGADO
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
@@ -58,6 +66,12 @@ public class ProductService {
         product.setName(name);
         product.setDescription(description);
         product.setSalePrice(salePrice);
+        product.setOriginalPrice(originalPrice);
+        
+        // Guardamos si es destacado
+        if (isFeatured != null) {
+            product.setFeatured(isFeatured);
+        }
         
         if (sizes != null && !sizes.isEmpty()) {
             product.setSizes(sizes);
@@ -86,6 +100,7 @@ public class ProductService {
         product.setName(request.name());
         product.setDescription(request.description());
         product.setSalePrice(request.salePrice());
+        product.setOriginalPrice(request.originalPrice());
         
         if (request.sizes() != null) {
             product.setSizes(request.sizes());

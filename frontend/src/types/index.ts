@@ -6,9 +6,11 @@ export interface Product {
     name: string;
     description: string;
     salePrice: number;
+    originalPrice?: number;
     isActive: boolean;
     imageUrls: string[];
     sizes: SizeStock[];
+    isFeatured?: boolean;
 }
 
 export interface SizeStock {

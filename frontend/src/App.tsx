@@ -8,7 +8,8 @@ import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import FaqPage from './pages/FaqPage';
 import TermsPage from './pages/TermsPage';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, MessageCircle, Mail } from 'lucide-react';
+import { FaInstagram } from 'react-icons/fa';
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -48,41 +49,59 @@ function App() {
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            {/* Navegación Desktop (Oculta en Celular) */}
-            <nav className="hidden md:flex gap-6">
-              <Link to="/" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
-                Catálogo
+            {/* Navegación Desktop */}
+            <nav className="hidden md:flex gap-6 items-center">
+              <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors items-center flex">
+                Inicio
               </Link>
+              <a href="/#catalogo" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
+                Categorías
+              </a>
               <Link to="/tracking" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">
                 Seguir Pedido
               </Link>
+              {/* Desplegable de Contacto */}
+              <div className="relative group py-4">
+                <span className="text-sm font-bold uppercase tracking-widest text-brand-muted group-hover:text-brand-primary transition-colors cursor-pointer flex items-center gap-1">
+                  Contacto
+                </span>
+                {/* Menú Flotante */}
+                <div className="absolute top-full right-0 mt-[-10px] w-48 bg-white border border-brand-border rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 flex flex-col overflow-hidden">
+                  <a href="https://wa.me/5493516071362" target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 text-xs font-bold text-brand-dark hover:bg-brand-gray hover:text-brand-primary transition-colors border-b border-brand-border uppercase tracking-widest">
+                    <MessageCircle size={16} /> WhatsApp
+                  </a>
+                  <a href="https://instagram.com/ritual.espacios" target="_blank" rel="noopener noreferrer" className="px-4 py-3 flex items-center gap-3 text-xs font-bold text-brand-dark hover:bg-brand-gray hover:text-brand-primary transition-colors border-b border-brand-border uppercase tracking-widest">
+                    <FaInstagram size={16} /> Instagram
+                  </a>
+                  <a href="mailto:ritualparrillas@gmail.com" className="px-4 py-3 flex items-center gap-3 text-xs font-bold text-brand-dark hover:bg-brand-gray hover:text-brand-primary transition-colors uppercase tracking-widest">
+                    <Mail size={16} /> Email
+                  </a>
+                </div>
+              </div>
             </nav>
           </div>
 
           {/* Menú Desplegable Celular */}
           {isMenuOpen && (
             <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-brand-border shadow-lg flex flex-col py-4 px-4 gap-4 animate-fade-in z-40">
-              <Link 
-                to="/" 
-                onClick={closeMenu}
-                className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border"
-              >
-                1. Ver Catálogo <span className="text-brand-primary">→</span>
+              <Link to="/" onClick={() => { closeMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest border border-brand-border">
+                Inicio
               </Link>
-              <Link 
-                to="/tracking" 
-                onClick={closeMenu}
-                className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border"
-              >
-                2. Seguir mi Pedido <span className="text-brand-primary">→</span>
+              <a href="/#catalogo" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest border border-brand-border">
+                Categorías
+              </a>
+              <Link to="/tracking" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest border border-brand-border">
+                Seguir mi Pedido
               </Link>
-              <Link 
-                to="/faq" 
-                onClick={closeMenu}
-                className="p-4 bg-white rounded-lg text-brand-muted text-xs font-bold uppercase tracking-widest text-center mt-2 border border-brand-border"
-              >
-                Preguntas Frecuentes
-              </Link>
+              {/* Contacto en Menú Móvil */}
+              <div className="p-4 bg-brand-gray rounded-lg border border-brand-border flex flex-col gap-3 mt-2">
+                <span className="text-brand-dark font-bold uppercase tracking-widest text-xs mb-1 text-center">Contacto Rápido</span>
+                <div className="flex gap-2">
+                   <a href="https://wa.me/5493516071362" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary"><MessageCircle size={20}/></a>
+                   <a href="https://instagram.com/ritual.espacios" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary"><FaInstagram size={20}/></a>
+                   <a href="mailto:ritualparrillas@gmail.com" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary"><Mail size={20}/></a>
+                </div>
+              </div>
             </div>
           )}
         </header>

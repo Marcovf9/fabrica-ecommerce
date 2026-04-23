@@ -5,7 +5,8 @@ import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid } from 'lucide-react';
+import { FaInstagram } from 'react-icons/fa';
 
 export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -83,22 +84,18 @@ export default function CatalogPage() {
     setCart(prev => prev.filter(item => !(item.product.id === productId && item.size === size)));
   };
 
-  // Validaciones en tiempo real mientras el usuario escribe
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCustomer({ ...customer, [name]: value });
 
     let errorMsg = '';
-    // Validación de solo letras
     if ((name === 'firstName' || name === 'lastName' || name === 'city') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
       errorMsg = 'Solo debe contener letras.';
     } 
-    // Validación de solo números
     else if ((name === 'phone' || name === 'number' || name === 'zip') && value && !/^[0-9]+$/.test(value)) {
       errorMsg = 'Solo debe contener números.';
     }
 
-    // El email limpia su error al escribir, se valida al salir del campo
     if (name !== 'email') {
       setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
     } else {
@@ -106,16 +103,11 @@ export default function CatalogPage() {
     }
   };
 
-  // Validación al quitar el foco del input
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
-    // Validación de email solo cuando termina de escribir
     if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
       setFormErrors(prev => ({ ...prev, email: 'Formato de correo inválido.' }));
     }
-
-    // Captura silenciosa para carritos abandonados
     if (name === 'email' || name === 'phone') {
       handleSilentCapture();
     }
@@ -166,79 +158,199 @@ export default function CatalogPage() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-brand-gray"><div className="animate-spin text-brand-primary"><PackageOpen size={48} /></div></div>;
   if (error) return <div className="h-screen flex items-center justify-center bg-brand-gray text-red-500"><h2>{error}</h2></div>;
 
-  const allCategories = ['Todas', ...Array.from(new Set(products.map(p => p.categoryName)))];
+
+  const categoryFilters = [
+    { name: 'Todas', icon: <LayoutGrid size={28} className="text-white" /> }, 
+    { name: 'Parrillas', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776966658/Parrilla_2_efiv1z.jpg' },
+    { name: 'Chulengos', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776968980/Chulengo_1_upvasu.jpg' },
+    { name: 'Accesorios', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776966616/Palita_y_Atizador_1_di9p5e.jpg' },
+    { name: 'Fogoneros', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776969396/Fogonero_1_b2rjp7.jpg' },
+    { name: 'Muebles de exterior sostenibles', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776970228/Muebles_de_exterior_1_p45uhn.png' }
+  ];
+  
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch && (selectedCategory === 'Todas' || p.categoryName === selectedCategory);
   });
+  
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
+
+  const featuredProducts = products.filter(p => (p as any).isFeatured).length > 0 
+    ? products.filter(p => (p as any).isFeatured) 
+    : products.slice(0, 4); 
 
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
   const finalTotal = cartSubtotal + shippingCost;
 
   return (
     <>
-      <Helmet><title>Ritual Espacios | Parrillas y Mobiliario de Diseño</title></Helmet>
+      <Helmet><title>Ritual Espacios | Fuego & Diseño</title></Helmet>
 
-      <div className="max-w-[1600px] w-[95%] mx-auto py-4 md:py-8 flex flex-col lg:flex-row gap-4 md:gap-8">
+      {/* 1. SECCIÓN PORTADA (HERO) - Máxima Visibilidad */}
+      <div className="relative w-full h-[70vh] md:h-[90vh] bg-brand-dark flex items-center justify-center overflow-hidden">
+        <img 
+          src={optimizeCloudinaryUrl('https://res.cloudinary.com/dq5bau3ky/image/upload/v1776966989/Portada_gis07o.png', 1920)} 
+          alt="Ritual Espacios Portada" 
+
+          className="absolute inset-0 w-full h-full object-cover object-bottom opacity-100" 
+        />
+    
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
+
+        {/* Textos con sombra para resaltar sobre la imagen clara */}
+        <div className="relative z-10 text-center px-4 animate-fade-in flex flex-col items-center">
+          <h2 className="text-4xl md:text-8xl font-light text-white tracking-[0.2em] uppercase mb-4 drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
+            Fuego & <span className="font-bold text-brand-primary">Diseño</span>
+          </h2>
+          <p className="text-white text-sm md:text-2xl tracking-[0.3em] uppercase mb-8 drop-shadow-[0_3px_10px_rgba(0,0,0,0.8)] font-medium">
+            Construidos para perdurar
+          </p>
+          <a 
+            href="#catalogo" 
+            className="inline-block bg-brand-primary text-white px-10 py-4 rounded-sm text-sm md:text-base font-bold uppercase tracking-widest hover:bg-orange-600 transition-all duration-300 shadow-2xl hover:scale-105"
+          >
+            Ver Colección
+          </a>
+        </div>
+      </div>
+
+      {/* 2. PRODUCTOS DESTACADOS */}
+      {featuredProducts.length > 0 && (
+        <section className="bg-brand-dark py-12 md:py-20 border-b-[6px] border-brand-primary relative">
+          <div className="max-w-[1600px] w-[95%] mx-auto">
+            <h2 className="text-center text-2xl md:text-4xl text-white font-light uppercase tracking-[0.2em] mb-2 drop-shadow-lg">
+              Colección <span className="font-bold text-brand-primary">Destacada</span>
+            </h2>
+            <p className="text-center text-brand-gray text-xs md:text-sm uppercase tracking-widest mb-10 opacity-80">
+              Los favoritos de Ritual
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+               {featuredProducts.slice(0, 4).map(product => (
+                  <Link key={`feat-${product.id}`} to={`/producto/${product.sku}`} className="bg-white border border-brand-border rounded-lg overflow-hidden group hover:shadow-2xl hover:shadow-brand-primary/20 transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="h-48 md:h-72 overflow-hidden relative bg-brand-gray">
+                      {product.imageUrls && product.imageUrls.length > 0 ? (
+                        <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} /></div>
+                      )}
+                      <div className="absolute top-3 right-3 bg-brand-dark text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest rounded-sm shadow-md">
+                        🌟 Top Ventas
+                      </div>
+                    </div>
+                    <div className="p-4 md:p-6 text-center">
+                      <h3 className="text-sm md:text-base font-bold text-brand-dark mb-2 line-clamp-1">{product.name}</h3>
+                      <p className="text-lg md:text-xl font-black text-brand-primary">${product.salePrice.toLocaleString('es-AR')}</p>
+                    </div>
+                  </Link>
+               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 3. FILA DE CATEGORÍAS FIJA */}
+      <div id="catalogo" className="bg-white border-b border-brand-border sticky top-[72px] md:top-[88px] z-40 shadow-sm">
+        <div className="max-w-[1600px] w-[95%] mx-auto py-4 md:py-6 flex gap-3 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth items-start justify-start lg:justify-center">
+          {categoryFilters.map(cat => (
+            <button 
+              key={cat.name} 
+              onClick={() => setSelectedCategory(cat.name)}
+              className="flex flex-col items-center gap-2 group flex-shrink-0 w-[76px] md:w-[100px]"
+            >
+              {/* Contenedor de la burbuja */}
+              <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full p-1 transition-all duration-300 border-2 ${selectedCategory === cat.name ? 'border-brand-primary' : 'border-transparent group-hover:border-gray-200'}`}>
+                
+                {/* Imagen o Ícono interior */}
+                <div className="w-full h-full rounded-full overflow-hidden shadow-inner bg-brand-dark flex items-center justify-center">
+                  {cat.image ? (
+                    <img 
+                      src={cat.image} 
+                      alt={cat.name} 
+                      className={`w-full h-full object-cover transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}
+                    />
+                  ) : (
+                    <div className={`transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}>
+                      {cat.icon}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+              {/* Texto de la categoría */}
+              <span className={`text-[9px] md:text-xs font-bold uppercase tracking-wider text-center leading-tight line-clamp-2 px-1 ${selectedCategory === cat.name ? 'text-brand-primary' : 'text-brand-muted group-hover:text-brand-dark'}`}>
+                {cat.name}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. CONTENEDOR PRINCIPAL: CATÁLOGO Y CARRITO */}
+      <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8">
         
-        {/* CATÁLOGO PRINCIPAL */}
+        {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
-          <div className="bg-white p-4 md:p-6 rounded-xl border border-brand-border mb-4 md:mb-8 shadow-sm">
-            <div className="relative mb-3 md:mb-6">
-              <Search className="absolute left-3 md:left-4 top-3 md:top-3.5 text-brand-muted" size={18} />
-              <input 
-                type="search" placeholder="Buscar producto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 md:pl-12 pr-4 py-2 md:py-3 bg-brand-gray border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-xs md:text-base"
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {allCategories.map(cat => (
-                <button 
-                  key={cat} onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-sm font-bold uppercase tracking-wider rounded-md transition-all duration-200 border ${selectedCategory === cat ? 'bg-brand-primary text-white border-brand-primary' : 'bg-white text-brand-muted border-brand-border hover:border-brand-primary hover:text-brand-primary'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+          
+          {/* Buscador */}
+          <div className="relative mb-8 max-w-md">
+            <Search className="absolute left-4 top-3.5 text-brand-muted" size={18} />
+            <input 
+              type="search" placeholder="Buscar por nombre o SKU..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm"
+            />
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-10 md:py-20 text-brand-muted flex flex-col items-center">
-              <PackageOpen size={32} className="mb-4 opacity-50 md:w-12 md:h-12" />
-              <p className="text-sm md:text-lg">No hay inventario que coincida con la búsqueda.</p>
+            <div className="text-center py-20 text-brand-muted flex flex-col items-center bg-white rounded-xl border border-brand-border">
+              <PackageOpen size={48} className="mb-4 opacity-50" />
+              <p className="text-lg">No hay productos en esta categoría.</p>
+              <button onClick={() => setSelectedCategory('Todas')} className="mt-4 text-brand-primary font-bold underline">Ver todo el catálogo</button>
             </div>
           ) : (
             displayCategories.map(category => (
-              <div key={category} className="mb-8 md:mb-12">
-                <h2 className="text-sm md:text-2xl text-brand-dark font-light uppercase tracking-widest border-b border-brand-border pb-2 md:pb-3 mb-4 md:mb-6">{category}</h2>
-                <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 md:gap-6">
+              <div key={category} className="mb-12">
+                <h2 className="text-lg md:text-2xl text-brand-dark font-light uppercase tracking-[0.15em] border-b border-brand-border pb-3 mb-6">{category}</h2>
+                <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                   {filteredProducts.filter(p => p.categoryName === category).map((product) => {
                     const totalStock = product.sizes ? product.sizes.reduce((acc, s) => acc + (s.stock || 0), 0) : 0;
                     return (
-                      <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-shadow duration-300">
-                        <Link to={`/producto/${product.sku}`} className="h-32 md:h-64 bg-brand-gray overflow-hidden relative block">
+                      <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300">
+                        <Link to={`/producto/${product.sku}`} className="h-40 md:h-64 bg-brand-gray overflow-hidden relative block">
                           {product.imageUrls && product.imageUrls.length > 0 ? (
-                            <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-500" />
+                            <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} className="md:w-16 md:h-16" /></div>
                           )}
                         </Link>
-                        <div className="p-3 md:p-6 flex flex-col flex-1">
+                        <div className="p-4 md:p-6 flex flex-col flex-1">
                           <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors">
-                            <h3 className="text-xs md:text-xl font-bold text-brand-dark mb-1 line-clamp-2 md:line-clamp-none">{product.name}</h3>
+                            <h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3>
                           </Link>
                           
-                          <div className="mt-auto pt-2 md:pt-4">
-                            <p className="text-sm md:text-2xl font-black text-brand-primary mb-2 md:mb-4">${product.salePrice.toLocaleString('es-AR')}</p>
-                            <Link 
-                              to={`/producto/${product.sku}`}
-                              className={`w-full py-1.5 md:py-3 px-2 md:px-4 text-[10px] md:text-base font-bold uppercase tracking-wider rounded transition-colors flex items-center justify-center gap-1 md:gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white' : 'bg-brand-border text-brand-muted cursor-not-allowed pointer-events-none'}`}
-                            >
-                              <Eye size={12} className="md:w-4 md:h-4" /> {totalStock > 0 ? 'Ver' : 'Agotado'}
-                            </Link>
-                          </div>
+                          <div className="mt-auto pt-4 relative">
+  {/* Cálculo de Descuento Automático */}
+  {product.originalPrice && product.originalPrice > product.salePrice && (
+    <div className="flex items-center gap-2 mb-1">
+      <span className="text-xs md:text-sm text-brand-muted line-through font-medium">
+        ${product.originalPrice.toLocaleString('es-AR')}
+      </span>
+      <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">
+        {Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF
+      </span>
+    </div>
+  )}
+  
+  <p className={`text-base md:text-2xl font-black mb-4 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-primary'}`}>
+    ${product.salePrice.toLocaleString('es-AR')}
+  </p>
+  
+  <Link 
+    to={`/producto/${product.sku}`}
+    className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}
+  >
+    <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
+  </Link>
+</div>
                         </div>
                       </div>
                     );
@@ -249,109 +361,129 @@ export default function CatalogPage() {
           )}
         </div>
 
-        {/* SIDEBAR DEL CARRITO */}
-        <div className="w-full lg:w-96 lg:sticky lg:top-28 self-start bg-white p-4 md:p-6 rounded-xl border border-brand-border shadow-lg lg:max-h-[calc(100vh-8rem)] overflow-y-auto">
-          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 border-b border-brand-border pb-3 md:pb-4">
-            <ShoppingCart className="text-brand-primary" size={20} />
-            <h2 className="text-base md:text-xl font-bold uppercase tracking-widest text-brand-dark m-0">Tu Pedido</h2>
+        {/* LADO DERECHO: SIDEBAR DEL CARRITO */}
+        <div className="w-full lg:w-[400px] lg:sticky lg:top-36 self-start bg-white p-5 md:p-6 rounded-xl border border-brand-border shadow-xl lg:max-h-[calc(100vh-10rem)] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
+            <div className="flex items-center gap-3">
+              <ShoppingCart className="text-brand-primary" size={24} />
+              <h2 className="text-lg font-bold uppercase tracking-widest text-brand-dark m-0">Tu Pedido</h2>
+            </div>
+            <span className="bg-brand-gray text-brand-dark text-xs font-bold px-2 py-1 rounded-full">{cart.reduce((a, b) => a + b.quantity, 0)} ítems</span>
           </div>
           
           {cart.length === 0 ? (
-            <p className="text-brand-muted text-xs md:text-base text-center py-4 md:py-8">Tu carrito está vacío.</p>
+            <p className="text-brand-muted text-sm text-center py-8">Aún no agregaste productos.</p>
           ) : (
-            <div className="space-y-2 md:space-y-4 mb-4 md:mb-6">
+            <div className="space-y-3 mb-6">
               {cart.map((item, idx) => (
-                <div key={`${item.product.id}-${idx}`} className="flex justify-between items-center bg-brand-gray p-2 md:p-3 rounded border border-brand-border">
-                  <div className="flex-1">
-                    <p className="text-brand-dark font-bold text-[10px] md:text-sm">{item.product.name} <span className="text-brand-primary font-black ml-1">[{item.size}]</span></p>
-                    <p className="text-brand-muted font-bold text-[10px] md:text-sm">${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</p>
+                <div key={`${item.product.id}-${idx}`} className="flex justify-between items-center bg-brand-gray p-3 rounded-lg border border-brand-border">
+                  <div className="flex-1 pr-2">
+                    <p className="text-brand-dark font-bold text-xs md:text-sm leading-tight mb-1">{item.product.name}</p>
+                    <p className="text-brand-primary font-black text-[10px] md:text-xs uppercase mb-1">Medida: {item.size}</p>
+                    <p className="text-brand-muted font-bold text-xs">${(item.product.salePrice * item.quantity).toLocaleString('es-AR')}</p>
                   </div>
-                  <div className="flex items-center gap-1 md:gap-2 bg-white rounded px-1.5 md:px-2 py-0.5 md:py-1 border border-brand-border shadow-sm">
-                    <button onClick={() => decreaseQuantity(item.product.id, item.size)} className="text-brand-muted hover:text-brand-primary p-0.5 md:p-1"><Minus size={10} className="md:w-3 md:h-3" /></button>
-                    <span className="text-brand-dark font-bold w-3 md:w-4 text-center text-[10px] md:text-sm">{item.quantity}</span>
-                    <button onClick={() => addQuantity(item.product.id, item.size)} className="text-brand-muted hover:text-brand-primary p-0.5 md:p-1"><Plus size={10} className="md:w-3 md:h-3" /></button>
+                  <div className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border border-brand-border shadow-sm">
+                    <button onClick={() => decreaseQuantity(item.product.id, item.size)} className="text-brand-muted hover:text-brand-primary p-1"><Minus size={12} /></button>
+                    <span className="text-brand-dark font-bold w-4 text-center text-xs">{item.quantity}</span>
+                    <button onClick={() => addQuantity(item.product.id, item.size)} className="text-brand-muted hover:text-brand-primary p-1"><Plus size={12} /></button>
                   </div>
-                  <button onClick={() => removeFromCart(item.product.id, item.size)} className="ml-2 text-red-500 hover:text-red-600 transition-colors p-1"><Trash2 size={14} className="md:w-4 md:h-4" /></button>
+                  <button onClick={() => removeFromCart(item.product.id, item.size)} className="ml-3 text-red-500 hover:text-red-600 transition-colors p-2 bg-white rounded-md border border-red-100 shadow-sm"><Trash2 size={16} /></button>
                 </div>
               ))}
             </div>
           )}
           
-          <div className="border-t border-brand-border pt-3 md:pt-4 mb-4 md:mb-6">
-            <div className="flex justify-between text-brand-dark mb-1 md:mb-2 text-[10px] md:text-sm font-bold">
+          <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
+            <div className="flex justify-between text-brand-dark mb-2 text-sm font-bold">
               <span>Subtotal:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
             </div>
-            <div className="flex justify-between text-brand-muted mb-2 md:mb-4 text-[10px] md:text-sm">
+            <div className="flex justify-between text-brand-muted mb-4 text-sm">
               <span>Envío (Est.):</span> <span>{shippingCost > 0 ? `$${shippingCost.toLocaleString('es-AR')}` : 'Ingresa C.P.'}</span>
             </div>
-            <h3 className="text-lg md:text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-2 md:pt-4">
-              <span>Total:</span> <span>${finalTotal.toLocaleString('es-AR')}</span>
+            <h3 className="text-xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
+              <span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span>
             </h3>
           </div>
           
-          <div className="space-y-3 md:space-y-4">
-            <h4 className="text-brand-primary text-[9px] md:text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-1 md:pb-2">Contacto</h4>
+          <div className="space-y-4">
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2">Datos de Contacto</h4>
             
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Nombre</label>
-                <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                {formErrors.firstName && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.firstName}</span>}
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Nombre</label>
+                <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                {formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}
               </div>
               <div>
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Apellido</label>
-                <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                {formErrors.lastName && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.lastName}</span>}
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Apellido</label>
+                <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                {formErrors.lastName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.lastName}</span>}
               </div>
             </div>
 
             <div>
-              <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Correo Electrónico</label>
-              <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-              {formErrors.email && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.email}</span>}
+              <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Correo Electrónico</label>
+              <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+              {formErrors.email && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.email}</span>}
             </div>
 
             <div>
-              <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Teléfono (Sin guiones)</label>
-              <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-              {formErrors.phone && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.phone}</span>}
+              <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Teléfono (Sin guiones)</label>
+              <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+              {formErrors.phone && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.phone}</span>}
             </div>
 
-            <h4 className="text-brand-primary text-[9px] md:text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-1 md:pb-2 pt-2 md:pt-4">Destino Logístico</h4>
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Destino Logístico</h4>
             
-            <div className="flex gap-2 md:gap-3">
+            <div className="flex gap-3">
               <div className="flex-[2]">
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Calle</label>
-                <input type="text" name="street" value={customer.street} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Calle</label>
+                <input type="text" name="street" value={customer.street} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
               </div>
               <div className="flex-1">
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Núm.</label>
-                <input type="text" name="number" value={customer.number} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                {formErrors.number && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.number}</span>}
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Núm.</label>
+                <input type="text" name="number" value={customer.number} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                {formErrors.number && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.number}</span>}
               </div>
             </div>
             
-            <div className="flex gap-2 md:gap-3">
+            <div className="flex gap-3">
               <div className="flex-1">
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">C.P.</label>
-                <input type="text" name="zip" value={customer.zip} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                {formErrors.zip && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.zip}</span>}
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">C.P.</label>
+                <input type="text" name="zip" value={customer.zip} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                {formErrors.zip && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.zip}</span>}
               </div>
               <div className="flex-[2]">
-                <label className="block text-[9px] md:text-xs uppercase text-brand-muted font-bold mb-1">Localidad</label>
-                <input type="text" name="city" value={customer.city} onChange={handleCustomerChange} className="w-full p-1.5 md:p-2.5 text-xs md:text-sm bg-white border border-brand-border rounded text-brand-dark focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none" />
-                {formErrors.city && <span className="text-red-500 text-[9px] md:text-xs mt-1 block">{formErrors.city}</span>}
+                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Localidad</label>
+                <input type="text" name="city" value={customer.city} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
+                {formErrors.city && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.city}</span>}
               </div>
             </div>
             
             <button 
               onClick={submitOrder} 
-              className="w-full mt-4 md:mt-6 py-3 md:py-4 bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase tracking-widest rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl text-sm md:text-base"
+              className="w-full mt-6 py-4 bg-brand-dark hover:bg-brand-primary text-white font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 shadow-xl hover:shadow-brand-primary/50 text-sm"
             >
-              Confirmar
+              Confirmar Pedido
             </button>
           </div>
         </div>
+      </div>
+
+      {/* 5. BANNER DE INSTAGRAM (FOOTER PREVIO) */}
+      <div id="contacto" className="w-full bg-brand-dark py-16 md:py-24 text-center mt-12 border-t border-brand-border">
+        <p className="text-brand-muted text-xs md:text-sm font-bold tracking-[0.3em] uppercase mb-6">
+          Formá parte de la comunidad
+        </p>
+        <a 
+          href="https://instagram.com/ritual.espacios" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="inline-flex items-center justify-center gap-4 text-3xl md:text-5xl font-light text-white hover:text-brand-primary transition-colors tracking-widest group"
+        >
+          <FaInstagram className="text-brand-primary group-hover:scale-110 transition-transform" /> 
+          @RITUAL.ESPACIOS
+        </a>
       </div>
     </>
   );
