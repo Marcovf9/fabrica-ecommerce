@@ -79,8 +79,8 @@ export default function ProductDetailPage() {
       </Helmet>
 
       <div className="max-w-[1600px] w-[95%] mx-auto py-6 md:py-10">
-        <Link to="/" className="inline-flex items-center gap-2 text-brand-primary text-xs md:text-sm font-bold tracking-widest uppercase hover:text-orange-500 transition-colors mb-6 md:mb-8">
-          <ArrowLeft size={18} /> Volver al catálogo
+        <Link to="/productos" className="inline-flex items-center gap-2 text-brand-primary text-xs md:text-sm font-bold tracking-widest uppercase hover:text-orange-500 transition-colors mb-6 md:mb-8">
+          <ArrowLeft size={18} /> Catálogo
         </Link>
         
         <div className="bg-white rounded-2xl flex flex-col lg:flex-row border border-brand-border overflow-hidden shadow-sm">

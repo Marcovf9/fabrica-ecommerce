@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { useState } from 'react';
-import CatalogPage from '../pages/CatalogPage';
+import CatalogPage from './ProductsPage.tsx';
 import AdminPage from '../pages/AdminPage';
 import TrackingPage from '../pages/TrackingPage';
 import ProductDetailPage from '../pages/ProductDetailPage';

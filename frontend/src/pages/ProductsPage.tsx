@@ -4,11 +4,11 @@ import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid } from 'lucide-react';
-import { FaInstagram } from 'react-icons/fa';
 
-export default function CatalogPage() {
+export default function ProductsPage() {
+  const location = useLocation();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function CatalogPage() {
   const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todas');
+  const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
   const [shippingCost, setShippingCost] = useState(0);
 
   useEffect(() => {
@@ -158,7 +158,6 @@ export default function CatalogPage() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-brand-gray"><div className="animate-spin text-brand-primary"><PackageOpen size={48} /></div></div>;
   if (error) return <div className="h-screen flex items-center justify-center bg-brand-gray text-red-500"><h2>{error}</h2></div>;
 
-
   const categoryFilters = [
     { name: 'Todas', icon: <LayoutGrid size={28} className="text-white" /> }, 
     { name: 'Parrillas', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776966658/Parrilla_2_efiv1z.jpg' },
@@ -174,81 +173,14 @@ export default function CatalogPage() {
   });
   
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
-
-  const featuredProducts = products.filter(p => (p as any).isFeatured).length > 0 
-    ? products.filter(p => (p as any).isFeatured) 
-    : products.slice(0, 4); 
-
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
   const finalTotal = cartSubtotal + shippingCost;
 
   return (
     <>
-      <Helmet><title>Ritual Espacios | Fuego & Diseño</title></Helmet>
+      <Helmet><title>Productos | Ritual Espacios</title></Helmet>
 
-      {/* 1. SECCIÓN PORTADA (HERO) - Máxima Visibilidad */}
-      <div className="relative w-full h-[70vh] md:h-[90vh] bg-brand-dark flex items-center justify-center overflow-hidden">
-        <img 
-          src={optimizeCloudinaryUrl('https://res.cloudinary.com/dq5bau3ky/image/upload/v1776966989/Portada_gis07o.png', 1920)} 
-          alt="Ritual Espacios Portada" 
-
-          className="absolute inset-0 w-full h-full object-cover object-bottom opacity-100" 
-        />
-    
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
-
-        {/* Textos con sombra para resaltar sobre la imagen clara */}
-        <div className="relative z-10 text-center px-4 animate-fade-in flex flex-col items-center">
-          <h2 className="text-4xl md:text-8xl font-light text-white tracking-[0.2em] uppercase mb-4 drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
-            Fuego & <span className="font-bold text-brand-primary">Diseño</span>
-          </h2>
-          <p className="text-white text-sm md:text-2xl tracking-[0.3em] uppercase mb-8 drop-shadow-[0_3px_10px_rgba(0,0,0,0.8)] font-medium">
-            Construidos para perdurar
-          </p>
-          <a 
-            href="#catalogo" 
-            className="inline-block bg-brand-primary text-white px-10 py-4 rounded-sm text-sm md:text-base font-bold uppercase tracking-widest hover:bg-orange-600 transition-all duration-300 shadow-2xl hover:scale-105"
-          >
-            Ver Colección
-          </a>
-        </div>
-      </div>
-
-      {/* 2. PRODUCTOS DESTACADOS */}
-      {featuredProducts.length > 0 && (
-        <section className="bg-brand-dark py-12 md:py-20 border-b-[6px] border-brand-primary relative">
-          <div className="max-w-[1600px] w-[95%] mx-auto">
-            <h2 className="text-center text-2xl md:text-4xl text-white font-light uppercase tracking-[0.2em] mb-2 drop-shadow-lg">
-              Colección <span className="font-bold text-brand-primary">Destacada</span>
-            </h2>
-            <p className="text-center text-brand-gray text-xs md:text-sm uppercase tracking-widest mb-10 opacity-80">
-              Los favoritos de Ritual
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-               {featuredProducts.slice(0, 4).map(product => (
-                  <Link key={`feat-${product.id}`} to={`/producto/${product.sku}`} className="bg-white border border-brand-border rounded-lg overflow-hidden group hover:shadow-2xl hover:shadow-brand-primary/20 transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="h-48 md:h-72 overflow-hidden relative bg-brand-gray">
-                      {product.imageUrls && product.imageUrls.length > 0 ? (
-                        <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} /></div>
-                      )}
-                      <div className="absolute top-3 right-3 bg-brand-dark text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest rounded-sm shadow-md">
-                        🌟 Top Ventas
-                      </div>
-                    </div>
-                    <div className="p-4 md:p-6 text-center">
-                      <h3 className="text-sm md:text-base font-bold text-brand-dark mb-2 line-clamp-1">{product.name}</h3>
-                      <p className="text-lg md:text-xl font-black text-brand-primary">${product.salePrice.toLocaleString('es-AR')}</p>
-                    </div>
-                  </Link>
-               ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 3. FILA DE CATEGORÍAS FIJA */}
+      {/* FILA DE CATEGORÍAS FIJA */}
       <div id="catalogo" className="bg-white border-b border-brand-border sticky top-[72px] md:top-[88px] z-40 shadow-sm">
         <div className="max-w-[1600px] w-[95%] mx-auto py-4 md:py-6 flex gap-3 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth items-start justify-start lg:justify-center">
           {categoryFilters.map(cat => (
@@ -257,45 +189,30 @@ export default function CatalogPage() {
               onClick={() => setSelectedCategory(cat.name)}
               className="flex flex-col items-center gap-2 group flex-shrink-0 w-[76px] md:w-[100px]"
             >
-              {/* Contenedor de la burbuja */}
               <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full p-1 transition-all duration-300 border-2 ${selectedCategory === cat.name ? 'border-brand-primary' : 'border-transparent group-hover:border-gray-200'}`}>
-                
-                {/* Imagen o Ícono interior */}
                 <div className="w-full h-full rounded-full overflow-hidden shadow-inner bg-brand-dark flex items-center justify-center">
                   {cat.image ? (
-                    <img 
-                      src={cat.image} 
-                      alt={cat.name} 
-                      className={`w-full h-full object-cover transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}
-                    />
+                    <img src={cat.image} alt={cat.name} className={`w-full h-full object-cover transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`} />
                   ) : (
-                    <div className={`transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}>
-                      {cat.icon}
-                    </div>
+                    <div className={`transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}>{cat.icon}</div>
                   )}
                 </div>
-
               </div>
-              {/* Texto de la categoría */}
-              <span className={`text-[9px] md:text-xs font-bold uppercase tracking-wider text-center leading-tight line-clamp-2 px-1 ${selectedCategory === cat.name ? 'text-brand-primary' : 'text-brand-muted group-hover:text-brand-dark'}`}>
-                {cat.name}
-              </span>
+              <span className={`text-[9px] md:text-xs font-bold uppercase tracking-wider text-center leading-tight line-clamp-2 px-1 ${selectedCategory === cat.name ? 'text-brand-primary' : 'text-brand-muted group-hover:text-brand-dark'}`}>{cat.name}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* 4. CONTENEDOR PRINCIPAL: CATÁLOGO Y CARRITO */}
-      <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8">
+      {/* CONTENEDOR PRINCIPAL: CATÁLOGO Y CARRITO */}
+      <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-screen">
         
         {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
-          
-          {/* Buscador */}
           <div className="relative mb-8 max-w-md">
             <Search className="absolute left-4 top-3.5 text-brand-muted" size={18} />
             <input 
-              type="search" placeholder="Buscar por nombre o SKU..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="search" placeholder="Buscar por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm"
             />
           </div>
@@ -326,31 +243,23 @@ export default function CatalogPage() {
                           <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors">
                             <h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3>
                           </Link>
-                          
                           <div className="mt-auto pt-4 relative">
-  {/* Cálculo de Descuento Automático */}
-  {product.originalPrice && product.originalPrice > product.salePrice && (
-    <div className="flex items-center gap-2 mb-1">
-      <span className="text-xs md:text-sm text-brand-muted line-through font-medium">
-        ${product.originalPrice.toLocaleString('es-AR')}
-      </span>
-      <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">
-        {Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF
-      </span>
-    </div>
-  )}
-  
-  <p className={`text-base md:text-2xl font-black mb-4 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-primary'}`}>
-    ${product.salePrice.toLocaleString('es-AR')}
-  </p>
-  
-  <Link 
-    to={`/producto/${product.sku}`}
-    className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}
-  >
-    <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
-  </Link>
-</div>
+                            {product.originalPrice && product.originalPrice > product.salePrice && (
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs md:text-sm text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
+                                <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">{Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF</span>
+                              </div>
+                            )}
+                            <p className={`text-base md:text-2xl font-black mb-4 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-primary'}`}>
+                              ${product.salePrice.toLocaleString('es-AR')}
+                            </p>
+                            <Link 
+                              to={`/producto/${product.sku}`}
+                              className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}
+                            >
+                              <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     );
@@ -468,22 +377,6 @@ export default function CatalogPage() {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* 5. BANNER DE INSTAGRAM (FOOTER PREVIO) */}
-      <div id="contacto" className="w-full bg-brand-dark py-16 md:py-24 text-center mt-12 border-t border-brand-border">
-        <p className="text-brand-muted text-xs md:text-sm font-bold tracking-[0.3em] uppercase mb-6">
-          Formá parte de la comunidad
-        </p>
-        <a 
-          href="https://instagram.com/ritual.espacios" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="inline-flex items-center justify-center gap-4 text-3xl md:text-5xl font-light text-white hover:text-brand-primary transition-colors tracking-widest group"
-        >
-          <FaInstagram className="text-brand-primary group-hover:scale-110 transition-transform" /> 
-          @RITUAL.ESPACIOS
-        </a>
       </div>
     </>
   );
