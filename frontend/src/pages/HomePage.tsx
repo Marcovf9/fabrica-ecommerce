@@ -38,6 +38,23 @@ export default function HomePage() {
     <>
       <Helmet><title>Ritual Espacios | Fuego & Diseño</title></Helmet>
 
+      {/* Etiqueta Schema.org para decirle a Google cuál es el logo oficial */}
+        <script type="application/ld+json">
+          {`
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Ritual Espacios",
+              "url": "https://www.ritualespacios.com/",
+              "logo": "https://www.ritualespacios.com/logo.jpeg",
+              "sameAs": [
+                "https://instagram.com/ritual.espacios"
+              ]
+            }
+          `}
+        </script>
+
+
       {/* 1. SECCIÓN PORTADA (HERO) */}
       <div className="relative w-full bg-brand-dark flex flex-col items-center justify-center">
         
