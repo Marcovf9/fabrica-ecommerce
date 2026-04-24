@@ -65,7 +65,7 @@ export default function ProductDetailPage() {
     
     localStorage.setItem('fabrica_cart', JSON.stringify(currentCart));
     Swal.fire({ icon: 'success', title: 'Agregado al pedido', timer: 1500, showConfirmButton: false });
-    navigate('/');
+    navigate('/productos');
   };
 
   if (loading) return <div className="h-screen flex justify-center items-center bg-brand-gray"><div className="animate-spin text-brand-primary"><Camera size={48}/></div></div>;

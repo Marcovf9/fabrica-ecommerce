@@ -9,6 +9,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.fabrica.ecommerce.dto.order.OrderRequestDTO;
 import com.fabrica.ecommerce.dto.order.OrderItemRequestDTO;
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.preference.*;
+import com.mercadopago.resources.preference.Preference;
+import java.util.Map;
+import java.util.HashMap;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.resources.payment.Payment;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,6 +35,9 @@ public class OrderService {
 
     @Value("${spring.mail.username:ritualparrillas@gmail.com}")
     private String adminEmail;
+
+    @Value("${mercadopago.access.token}")
+    private String mpAccessToken;
 
     private String extractEmail(String customerContact) {
         try {
@@ -65,72 +75,90 @@ public class OrderService {
     }
 
     @Transactional
-    public Order createPendingOrder(OrderRequestDTO request) {
+    public Map<String, Object> createPendingOrderWithMP(OrderRequestDTO request) {
         Order order = new Order();
         order.setCustomerContact(request.customerContact());
         order.setDeliveryAddress(request.deliveryAddress());
         order.setStatus(Order.OrderStatus.PENDING);
         order.setOrderCode("PED-" + System.currentTimeMillis() % 1000000); 
-        
         order.setTotalSaleAmount(BigDecimal.ZERO);
         order = orderRepository.save(order);
 
         int totalItems = request.items().stream().mapToInt(OrderItemRequestDTO::quantity).sum();
         String zip = "0000";
-        try {
-            zip = request.deliveryAddress().split("CP: ")[1].split(",")[0].trim();
-        } catch (Exception e) { System.err.println("No se pudo extraer CP"); }
+        try { zip = request.deliveryAddress().split("CP: ")[1].split(",")[0].trim(); } catch (Exception e) {}
 
         BigDecimal shippingCost = shippingService.calculateShipping(zip, totalItems);
-        BigDecimal totalSale = shippingCost;
+        BigDecimal subTotalProducts = BigDecimal.ZERO;
 
         for (OrderItemRequestDTO itemDto : request.items()) {
             Product product = productRepository.findById(itemDto.productId())
                     .orElseThrow(() -> new IllegalArgumentException("Producto inválido"));
-
-            if (!product.getIsActive()) throw new IllegalStateException("El producto no está activo.");
+            if (!product.getIsActive()) throw new IllegalStateException("Producto inactivo.");
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
             orderItem.setQuantity(itemDto.quantity());
             orderItem.setUnitPrice(product.getSalePrice()); 
-            
-            // ASIGNACIÓN DE LA MEDIDA AL ÍTEM
             orderItem.setSize(itemDto.size()); 
-            
             orderItemRepository.save(orderItem);
 
-            BigDecimal itemTotal = product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity()));
-            totalSale = totalSale.add(itemTotal);
+            subTotalProducts = subTotalProducts.add(product.getSalePrice().multiply(BigDecimal.valueOf(itemDto.quantity())));
         }
 
-        order.setTotalSaleAmount(totalSale);
+        if ("TRANSFER".equalsIgnoreCase(request.paymentMethod())) {
+            subTotalProducts = subTotalProducts.multiply(new BigDecimal("0.80"));
+        }
+
+        BigDecimal finalTotalSale = subTotalProducts.add(shippingCost);
+        order.setTotalSaleAmount(finalTotalSale);
         Order savedOrder = orderRepository.save(order);
 
-        String email = extractEmail(savedOrder.getCustomerContact());
-        if (email != null) {
-            String content = "<p style='font-size: 16px;'>Hemos registrado tu solicitud de compra por un total de <b>$" + totalSale + "</b> (Costo de envío estimado incluido).</p>" +
-                             "<p style='font-size: 16px;'>El stock de tu pedido ha sido bloqueado temporalmente a tu nombre en nuestra planta.</p>" +
-                             "<div style='background-color: #F8D7DA; color: #721C24; padding: 15px; border-left: 4px solid #D67026; margin: 25px 0; font-size: 14px;'>" +
-                             "<strong>⚠️ Importante:</strong> El pedido no será procesado ni despachado hasta que te comuniques por nuestro canal de WhatsApp para coordinar y validar el pago correspondiente." +
-                             "</div>" +
-                             "<p style='font-size: 16px;'>Utiliza el botón inferior para conocer el estado de la operación.</p>";
-            
-            emailService.sendHtmlEmail(email, "Pedido Registrado #" + savedOrder.getOrderCode() + " - Ritual Espacios", buildProfessionalEmail("Confirmación de Pedido", content, savedOrder.getOrderCode()));
+        String checkoutUrl = null;
+
+        if ("MERCADO_PAGO".equalsIgnoreCase(request.paymentMethod())) {
+            try {
+                MercadoPagoConfig.setAccessToken(mpAccessToken);
+
+                PreferenceItemRequest itemRequest = PreferenceItemRequest.builder()
+                    .title("Pedido Ritual Espacios #" + savedOrder.getOrderCode())
+                    .quantity(1)
+                    .unitPrice(finalTotalSale)
+                    .currencyId("ARS")
+                    .build();
+
+                PreferenceRequest preferenceRequest = PreferenceRequest.builder()
+                    .items(List.of(itemRequest))
+                    .backUrls(PreferenceBackUrlsRequest.builder()
+                        .success("https://www.ritualespacios.com/pago-exitoso")
+                        .failure("https://www.ritualespacios.com/pago-fallido")
+                        .pending("https://www.ritualespacios.com/pago-pendiente")
+                        .build())
+                    .autoReturn("approved")
+                    .externalReference(savedOrder.getOrderCode())
+                    .build();
+
+                PreferenceClient client = new PreferenceClient();
+                Preference preference = client.create(preferenceRequest);
+                checkoutUrl = preference.getInitPoint();
+                
+            } catch (Exception e) {
+                throw new RuntimeException("Error al generar pago con Mercado Pago: " + e.getMessage());
+            }
+        } else {
+            String email = extractEmail(savedOrder.getCustomerContact());
+            if (email != null) {
+                String content = "<p>Hemos registrado tu compra por <b>$" + finalTotalSale + "</b>.</p>" +
+                                 "<p>Recuerda escribirnos por WhatsApp para procesar tu transferencia con el 20% de descuento aplicado.</p>";
+                emailService.sendHtmlEmail(email, "Pedido Pendiente #" + savedOrder.getOrderCode(), buildProfessionalEmail("Confirmación de Pedido", content, savedOrder.getOrderCode()));
+            }
         }
 
-        String adminHtmlBody = "<div style='font-family: Arial, sans-serif; color: #333;'>" +
-            "<h2 style='color: #D67026;'>🚨 NUEVO PEDIDO PENDIENTE: #" + savedOrder.getOrderCode() + "</h2>" +
-            "<p><strong>Total a cobrar:</strong> $" + totalSale + "</p>" +
-            "<p><strong>Cliente / Contacto:</strong> " + savedOrder.getCustomerContact() + "</p>" +
-            "<p><strong>Dirección de Envío:</strong> " + savedOrder.getDeliveryAddress() + "</p>" +
-            "<hr style='border: 1px solid #ccc;'/>" +
-            "<p><em>Ingresa al panel de administración para ver el detalle. Es tu responsabilidad contactar al cliente si no recibes el mensaje de WhatsApp.</em></p>" +
-            "</div>";
-        emailService.sendHtmlEmail(adminEmail, "VENTA PENDIENTE: #" + savedOrder.getOrderCode(), adminHtmlBody);
-
-        return savedOrder;
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("order", savedOrder);
+        responseMap.put("checkoutUrl", checkoutUrl);
+        return responseMap;
     }
 
     @Transactional
@@ -272,7 +300,7 @@ public class OrderService {
                         item.getQuantity(),
                         item.getUnitPrice(),
                         item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())),
-                        item.getSize() // <-- Tamaño expuesto hacia el frontend
+                        item.getSize()
                 )).toList();
         
         return new com.fabrica.ecommerce.dto.order.OrderDetailResponseDTO(
@@ -283,5 +311,40 @@ public class OrderService {
                 order.getTotalSaleAmount(), 
                 items
         );
+    }
+
+    @Transactional
+    public void processWebHook(Map<String, Object> payload) {
+        try {
+            String type = (String) payload.get("type");
+            if (type == null) type = (String) payload.get("action");
+
+            if ("payment".equals(type) || "payment.created".equals(type) || "payment.updated".equals(type)) {
+                
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) payload.get("data");
+                String paymentIdStr = String.valueOf(data.get("id"));
+                Long paymentId = Long.valueOf(paymentIdStr);
+
+                MercadoPagoConfig.setAccessToken(mpAccessToken);
+                PaymentClient client = new PaymentClient();
+                
+                Payment payment = client.get(paymentId);
+
+                if ("approved".equals(payment.getStatus())) {
+                    String orderCode = payment.getExternalReference();
+                    
+                    if (orderCode != null) {
+                        Order order = orderRepository.findByOrderCode(orderCode).orElse(null);
+                        
+                        if (order != null && order.getStatus() == Order.OrderStatus.PENDING) {
+                            confirmOrder(orderCode);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error procesando Webhook de MP: " + e.getMessage());
+        }
     }
 }

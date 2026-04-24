@@ -122,6 +122,9 @@ function App() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/terminos" element={<TermsPage />} />
             <Route path="/faq" element={<FaqPage />} />
+            <Route path="/pago-exitoso" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-green-600 font-bold mb-4">¡Pago Exitoso!</h1><p>Tu pedido está en preparación. Revisa tu email.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
+            <Route path="/pago-fallido" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-red-600 font-bold mb-4">El pago fue rechazado</h1><p>Intenta nuevamente desde el carrito.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
+            <Route path="/pago-pendiente" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-yellow-600 font-bold mb-4">Pago Pendiente</h1><p>Estamos esperando la confirmación de la red bancaria.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
           </Routes>
         </main>
 

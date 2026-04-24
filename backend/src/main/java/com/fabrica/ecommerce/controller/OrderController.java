@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -22,9 +23,9 @@ public class OrderController {
     private final PdfService pdfService;
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody OrderRequestDTO request) {
-        Order pendingOrder = orderService.createPendingOrder(request);
-        return new ResponseEntity<>(pendingOrder, HttpStatus.CREATED);
+    public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody OrderRequestDTO request) {
+        Map<String, Object> response = orderService.createPendingOrderWithMP(request);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PostMapping("/{orderCode}/confirm")
@@ -65,5 +66,11 @@ public class OrderController {
         headers.setContentDispositionFormData("inline", "remito_" + orderCode + ".pdf"); 
 
         return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+    }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<String> mercadoPagoWebhook(@RequestBody Map<String, Object> payload) {
+        orderService.processWebHook(payload);
+        return ResponseEntity.ok("OK");
     }
 }

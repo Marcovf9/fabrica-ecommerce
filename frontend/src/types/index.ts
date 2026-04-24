@@ -27,6 +27,7 @@ export interface CartItem {
 export interface OrderRequestDTO {
     customerContact: string;
     deliveryAddress: string;
+    paymentMethod: 'TRANSFER' | 'MERCADO_PAGO';
     items: {
         productId: number;
         quantity: number;

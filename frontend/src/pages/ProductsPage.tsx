@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Building2 } from 'lucide-react';
 
 export default function ProductsPage() {
   const location = useLocation();
@@ -23,13 +23,16 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
   const [shippingCost, setShippingCost] = useState(0);
+  
+  const [paymentMethod, setPaymentMethod] = useState<'TRANSFER' | 'MERCADO_PAGO'>('TRANSFER');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const fetchCatalog = async () => {
       try {
         const data = await catalogService.getCatalog();
         setProducts(data);
-      } catch (err) { setError("Error al cargar el catálogo de productos."); } 
+      } catch (err) { setError("Error al cargar el catálogo."); } 
       finally { setLoading(false); }
     };
     fetchCatalog();
@@ -45,28 +48,25 @@ export default function ProductsPage() {
           const cost = await shippingService.calculate(customer.zip, totalItems);
           setShippingCost(cost);
         } catch (err) { setShippingCost(0); }
-      } else {
-        setShippingCost(0);
-      }
+      } else { setShippingCost(0); }
     };
     const timeoutId = setTimeout(calculateShipping, 500);
     return () => clearTimeout(timeoutId);
   }, [customer.zip, cart]);
 
   const addQuantity = (productId: number, size: string) => {
-    setCart((prevCart) => {
-      const existing = prevCart.find(item => item.product.id === productId && item.size === size);
+    setCart((prev) => {
+      const existing = prev.find(item => item.product.id === productId && item.size === size);
       if (existing) {
         const sizeData = existing.product.sizes?.find(s => s.size === size);
         const maxStock = sizeData ? sizeData.stock : 0;
-        
         if (existing.quantity >= maxStock) {
-          Swal.fire({ icon: 'warning', title: 'Límite de stock', text: `Solo quedan ${maxStock} unidades de esta variante.`, toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
-          return prevCart;
+          Swal.fire({ icon: 'warning', title: 'Límite de stock', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
+          return prev;
         }
-        return prevCart.map(item => (item.product.id === productId && item.size === size) ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map(item => (item.product.id === productId && item.size === size) ? { ...item, quantity: item.quantity + 1 } : item);
       }
-      return prevCart;
+      return prev;
     });
   };
 
@@ -87,36 +87,6 @@ export default function ProductsPage() {
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCustomer({ ...customer, [name]: value });
-
-    let errorMsg = '';
-    if ((name === 'firstName' || name === 'lastName' || name === 'city') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
-      errorMsg = 'Solo debe contener letras.';
-    } 
-    else if ((name === 'phone' || name === 'number' || name === 'zip') && value && !/^[0-9]+$/.test(value)) {
-      errorMsg = 'Solo debe contener números.';
-    }
-
-    if (name !== 'email') {
-      setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
-    } else {
-      setFormErrors(prev => ({ ...prev, email: '' }));
-    }
-  };
-
-  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setFormErrors(prev => ({ ...prev, email: 'Formato de correo inválido.' }));
-    }
-    if (name === 'email' || name === 'phone') {
-      handleSilentCapture();
-    }
-  };
-
-  const handleSilentCapture = async () => {
-    if (cart.length === 0 || (!customer.email.trim() && !customer.phone.trim())) return;
-    const cartContent = cart.map(item => `${item.quantity}x ${item.product.name} (${item.size})`).join(' | ');
-    try { await leadService.captureLead({ email: customer.email, phone: customer.phone, cartContent }); } catch (error) { console.error("Fallo captura silenciosa"); }
   };
 
   const submitOrder = async () => {
@@ -124,35 +94,45 @@ export default function ProductsPage() {
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim() || !customer.street.trim() || !customer.number.trim() || !customer.zip.trim() || !customer.city.trim()) {
       return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos son obligatorios.' });
     }
-    if (Object.values(formErrors).some(err => err !== '')) return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'Corrige los errores marcados en rojo.' });
     
+    setIsProcessing(true);
     try {
       const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
       const formattedAddress = `${customer.street} ${customer.number}, CP: ${customer.zip}, ${customer.city}`;
       const payload = { 
         customerContact: formattedContact, 
         deliveryAddress: formattedAddress, 
+        paymentMethod: paymentMethod,
         items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity, size: item.size })) 
       };
       
       const response = await orderService.createPendingOrder(payload);
-      const cartTotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
-      if ((window as any).fbq) { (window as any).fbq('track', 'Purchase', { value: cartTotal, currency: 'ARS' }); }
-
-      const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
-      const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.orderCode}.\n\nArtículos:\n${itemsList}\n\nSubtotal: $${cartSubtotal.toLocaleString('es-AR')}.\nEnvío cotizado a CP ${customer.zip}: $${shippingCost.toLocaleString('es-AR')}.\nTotal a transferir: $${finalTotal.toLocaleString('es-AR')}.\nMi envío es a ${formattedAddress}. Quiero coordinar el pago.`;
-      
-      const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
-
-      Swal.fire({
-        icon: 'success', title: '¡Pedido Registrado!',
-        html: `Código: <b class="text-brand-primary">${response.orderCode}</b><br/><br/>Stock reservado. Contáctanos para el pago.`,
-        confirmButtonColor: '#D67026', confirmButtonText: 'Coordinar Pago (WhatsApp)'
-      }).then((result) => { if (result.isConfirmed) window.open(waUrl, '_blank'); });
       
       setCart([]);
-      setCustomer({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
-    } catch (err) { Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al procesar.' }); }
+      localStorage.removeItem('fabrica_cart');
+
+      if (paymentMethod === 'TRANSFER') {
+        const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
+        const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.order.orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 20% OFF + Envío): $${finalTotal.toLocaleString('es-AR')}.\nMi envío es a ${formattedAddress}. Solicito los datos bancarios.`;
+        const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
+
+        Swal.fire({
+          icon: 'success', title: '¡Pedido Registrado!',
+          html: `Código: <b class="text-brand-primary">${response.order.orderCode}</b><br/><br/>Serás redirigido a WhatsApp para coordinar el pago con descuento.`,
+          confirmButtonColor: '#D67026', confirmButtonText: 'Ir a WhatsApp'
+        }).then(() => { window.location.href = waUrl; });
+      } else {
+        if (response.checkoutUrl) {
+          window.location.href = response.checkoutUrl;
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error de pasarela', text: 'No se pudo generar el link de pago.' });
+        }
+      }
+    } catch (err) { 
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al procesar el pedido.' }); 
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-brand-gray"><div className="animate-spin text-brand-primary"><PackageOpen size={48} /></div></div>;
@@ -173,29 +153,22 @@ export default function ProductsPage() {
   });
   
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
+
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
-  const finalTotal = cartSubtotal + shippingCost;
+  const discountAmount = paymentMethod === 'TRANSFER' ? cartSubtotal * 0.20 : 0;
+  const finalTotal = cartSubtotal - discountAmount + shippingCost;
 
   return (
     <>
       <Helmet><title>Productos | Ritual Espacios</title></Helmet>
 
-      {/* FILA DE CATEGORÍAS FIJA */}
       <div id="catalogo" className="bg-white border-b border-brand-border sticky top-[72px] md:top-[88px] z-40 shadow-sm">
         <div className="max-w-[1600px] w-[95%] mx-auto py-4 md:py-6 flex gap-3 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth items-start justify-start lg:justify-center">
           {categoryFilters.map(cat => (
-            <button 
-              key={cat.name} 
-              onClick={() => setSelectedCategory(cat.name)}
-              className="flex flex-col items-center gap-2 group flex-shrink-0 w-[76px] md:w-[100px]"
-            >
+            <button key={cat.name} onClick={() => setSelectedCategory(cat.name)} className="flex flex-col items-center gap-2 group flex-shrink-0 w-[76px] md:w-[100px]">
               <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full p-1 transition-all duration-300 border-2 ${selectedCategory === cat.name ? 'border-brand-primary' : 'border-transparent group-hover:border-gray-200'}`}>
                 <div className="w-full h-full rounded-full overflow-hidden shadow-inner bg-brand-dark flex items-center justify-center">
-                  {cat.image ? (
-                    <img src={cat.image} alt={cat.name} className={`w-full h-full object-cover transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`} />
-                  ) : (
-                    <div className={`transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}>{cat.icon}</div>
-                  )}
+                  {cat.image ? <img src={cat.image} alt={cat.name} className={`w-full h-full object-cover transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`} /> : <div className={`transition-transform duration-700 ${selectedCategory === cat.name ? 'scale-110' : 'group-hover:scale-110'}`}>{cat.icon}</div>}
                 </div>
               </div>
               <span className={`text-[9px] md:text-xs font-bold uppercase tracking-wider text-center leading-tight line-clamp-2 px-1 ${selectedCategory === cat.name ? 'text-brand-primary' : 'text-brand-muted group-hover:text-brand-dark'}`}>{cat.name}</span>
@@ -204,17 +177,13 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* CONTENEDOR PRINCIPAL: CATÁLOGO Y CARRITO */}
       <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-screen">
         
         {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
           <div className="relative mb-8 max-w-md">
             <Search className="absolute left-4 top-3.5 text-brand-muted" size={18} />
-            <input 
-              type="search" placeholder="Buscar por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm"
-            />
+            <input type="search" placeholder="Buscar por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm" />
           </div>
 
           {filteredProducts.length === 0 ? (
@@ -233,11 +202,7 @@ export default function ProductsPage() {
                     return (
                       <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300">
                         <Link to={`/producto/${product.sku}`} className="h-40 md:h-64 bg-brand-gray overflow-hidden relative block">
-                          {product.imageUrls && product.imageUrls.length > 0 ? (
-                            <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} className="md:w-16 md:h-16" /></div>
-                          )}
+                          {product.imageUrls && product.imageUrls.length > 0 ? <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} className="md:w-16 md:h-16" /></div>}
                         </Link>
                         <div className="p-4 md:p-6 flex flex-col flex-1">
                           <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors">
@@ -253,10 +218,7 @@ export default function ProductsPage() {
                             <p className={`text-base md:text-2xl font-black mb-4 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-primary'}`}>
                               ${product.salePrice.toLocaleString('es-AR')}
                             </p>
-                            <Link 
-                              to={`/producto/${product.sku}`}
-                              className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}
-                            >
+                            <Link to={`/producto/${product.sku}`} className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}>
                               <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
                             </Link>
                           </div>
@@ -301,79 +263,71 @@ export default function ProductsPage() {
               ))}
             </div>
           )}
-          
-          <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
-            <div className="flex justify-between text-brand-dark mb-2 text-sm font-bold">
-              <span>Subtotal:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
-            </div>
-            <div className="flex justify-between text-brand-muted mb-4 text-sm">
-              <span>Envío (Est.):</span> <span>{shippingCost > 0 ? `$${shippingCost.toLocaleString('es-AR')}` : 'Ingresa C.P.'}</span>
-            </div>
-            <h3 className="text-xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
-              <span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span>
-            </h3>
-          </div>
-          
+
           <div className="space-y-4">
-            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2">Datos de Contacto</h4>
-            
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Envío</h4>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Nombre</label>
-                <input type="text" name="firstName" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-                {formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Apellido</label>
-                <input type="text" name="lastName" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-                {formErrors.lastName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.lastName}</span>}
-              </div>
+              <input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
+              <input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
             </div>
-
-            <div>
-              <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Correo Electrónico</label>
-              <input type="email" name="email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-              {formErrors.email && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.email}</span>}
-            </div>
-
-            <div>
-              <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Teléfono (Sin guiones)</label>
-              <input type="tel" name="phone" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-              {formErrors.phone && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.phone}</span>}
-            </div>
-
-            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Destino Logístico</h4>
+            <input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
+            <input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
             
             <div className="flex gap-3">
-              <div className="flex-[2]">
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Calle</label>
-                <input type="text" name="street" value={customer.street} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-              </div>
-              <div className="flex-1">
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Núm.</label>
-                <input type="text" name="number" value={customer.number} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-                {formErrors.number && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.number}</span>}
-              </div>
+              <input type="text" name="street" placeholder="Calle" value={customer.street} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-[2]" />
+              <input type="text" name="number" placeholder="Nro" value={customer.number} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-1" />
             </div>
-            
             <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">C.P.</label>
-                <input type="text" name="zip" value={customer.zip} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-                {formErrors.zip && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.zip}</span>}
+              <input type="text" name="zip" placeholder="C.P." value={customer.zip} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-1" />
+              <input type="text" name="city" placeholder="Localidad" value={customer.city} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-[2]" />
+            </div>
+
+            {/* SECCIÓN MÉTODOS DE PAGO */}
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-6">Método de Pago</h4>
+            <div className="flex flex-col gap-3 mb-4">
+              <label className={`border p-3 md:p-4 rounded-lg cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === 'TRANSFER' ? 'border-brand-primary bg-orange-50 shadow-md transform scale-[1.02]' : 'border-brand-border bg-white hover:bg-brand-gray'}`}>
+                <input type="radio" name="payment" value="TRANSFER" checked={paymentMethod === 'TRANSFER'} onChange={() => setPaymentMethod('TRANSFER')} className="accent-brand-primary w-4 h-4" />
+                <div className="flex-1">
+                  <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><Building2 size={16}/> Transferencia</p>
+                  <p className="text-xs text-brand-primary font-black mt-1">🔥 20% DE DESCUENTO</p>
+                </div>
+              </label>
+              
+              <label className={`border p-3 md:p-4 rounded-lg cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === 'MERCADO_PAGO' ? 'border-[#009EE3] bg-[#009EE3]/10 shadow-md transform scale-[1.02]' : 'border-brand-border bg-white hover:bg-brand-gray'}`}>
+                <input type="radio" name="payment" value="MERCADO_PAGO" checked={paymentMethod === 'MERCADO_PAGO'} onChange={() => setPaymentMethod('MERCADO_PAGO')} className="accent-[#009EE3] w-4 h-4" />
+                <div className="flex-1">
+                  <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><CreditCard size={16}/> Tarjetas / Mercado Pago</p>
+                  <p className="text-[10px] md:text-xs text-brand-muted mt-1 leading-tight">Crédito, Débito o dinero en cuenta.</p>
+                </div>
+              </label>
+            </div>
+
+            {/* RESUMEN FINAL */}
+            <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
+              <div className="flex justify-between text-brand-dark mb-2 text-sm">
+                <span>Subtotal lista:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
               </div>
-              <div className="flex-[2]">
-                <label className="block text-[10px] uppercase text-brand-muted font-bold mb-1">Localidad</label>
-                <input type="text" name="city" value={customer.city} onChange={handleCustomerChange} className="w-full p-2.5 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary outline-none transition-all" />
-                {formErrors.city && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.city}</span>}
+              
+              {paymentMethod === 'TRANSFER' && (
+                <div className="flex justify-between text-green-600 mb-2 text-sm font-bold animate-fade-in">
+                  <span>Descuento (20%):</span> <span>-${discountAmount.toLocaleString('es-AR')}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between text-brand-muted mb-4 text-sm">
+                <span>Envío (Est.):</span> <span>{shippingCost > 0 ? `$${shippingCost.toLocaleString('es-AR')}` : 'Calculando...'}</span>
               </div>
+              <h3 className="text-xl md:text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
+                <span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span>
+              </h3>
             </div>
             
             <button 
               onClick={submitOrder} 
-              className="w-full mt-6 py-4 bg-brand-dark hover:bg-brand-primary text-white font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 shadow-xl hover:shadow-brand-primary/50 text-sm"
+              disabled={isProcessing}
+              className={`w-full py-4 font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 shadow-xl text-sm ${isProcessing ? 'bg-gray-400 text-white cursor-not-allowed' : paymentMethod === 'MERCADO_PAGO' ? 'bg-[#009EE3] hover:bg-[#0088c4] text-white shadow-[#009EE3]/40 hover:scale-105' : 'bg-brand-dark hover:bg-brand-primary text-white hover:scale-105'}`}
             >
-              Confirmar Pedido
+              {isProcessing ? 'Procesando...' : paymentMethod === 'MERCADO_PAGO' ? 'Pagar con Mercado Pago' : 'Confirmar y Ver WhatsApp'}
             </button>
           </div>
         </div>

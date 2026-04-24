@@ -11,6 +11,9 @@ public record OrderRequestDTO(
         @NotBlank(message = "La dirección de envío es obligatoria")
         String deliveryAddress,
         
+        @NotBlank(message = "El método de pago es obligatorio")
+        String paymentMethod,
+
         @NotEmpty(message = "El pedido debe tener al menos un producto")
         List<OrderItemRequestDTO> items
 ) {}
