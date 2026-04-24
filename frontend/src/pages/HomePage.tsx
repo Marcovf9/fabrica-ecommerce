@@ -59,7 +59,7 @@ export default function HomePage() {
       <div className="relative w-full bg-brand-dark flex flex-col items-center justify-center">
         
         <img 
-          src="https://res.cloudinary.com/dq5bau3ky/image/upload/f_auto,q_auto,dpr_auto/v1776989629/Portada_sxxmtm.png" 
+          src="https://res.cloudinary.com/dq5bau3ky/image/upload/v1777070216/Portada_z8rrih.png" 
           alt="Ritual Espacios Portada" 
           className="w-full h-auto block opacity-100" 
         />

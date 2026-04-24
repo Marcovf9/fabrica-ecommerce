@@ -25,17 +25,17 @@ export default function Footer() {
           {/* Enlaces Operativos */}
           <div className="flex flex-col gap-3 lg:items-center">
             <h3 className="text-brand-text font-bold uppercase tracking-wider mb-2">Plataforma</h3>
-            <Link to="/" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Catálogo Activo</Link>
+            <Link to="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Inicio</Link>
+            <Link to="/productos" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Catálogo Activo</Link>
             <Link to="/tracking" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Rastrear Pedido</Link>
             <Link to="/admin" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Acceso Administrativo</Link>
           </div>
 
-          {/* Soporte y Legal (Añadido) */}
+          {/* Soporte y Legal */}
           <div className="flex flex-col gap-3 lg:items-center">
             <h3 className="text-brand-text font-bold uppercase tracking-wider mb-2">Soporte y Legal</h3>
             <Link to="/faq" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Preguntas Frecuentes</Link>
             <Link to="/terminos" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Términos y Condiciones</Link>
-            <Link to="/terminos" className="text-brand-muted hover:text-brand-primary transition-colors text-sm">Envíos y Garantías</Link>
           </div>
 
           {/* Contacto Directo */}
@@ -43,7 +43,7 @@ export default function Footer() {
             <h3 className="text-brand-text font-bold uppercase tracking-wider mb-2">Contacto Directo</h3>
             <div className="flex gap-4">
               <a 
-                href="https://wa.me/5493517150510" 
+                href="https://wa.me/5493516071362" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-brand-dark border border-brand-border flex items-center justify-center text-brand-muted hover:text-[#25D366] hover:border-[#25D366] transition-all duration-300"

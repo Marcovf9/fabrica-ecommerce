@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { catalogService, orderService, leadService, shippingService } from '../services/api';
+import { catalogService, orderService, leadService } from '../services/api';
 import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Building2 } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Building2, Truck } from 'lucide-react';
 
 export default function ProductsPage() {
   const location = useLocation();
@@ -22,7 +22,6 @@ export default function ProductsPage() {
   const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
-  const [shippingCost, setShippingCost] = useState(0);
   
   const [paymentMethod, setPaymentMethod] = useState<'TRANSFER' | 'MERCADO_PAGO'>('TRANSFER');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,20 +38,6 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => { localStorage.setItem('fabrica_cart', JSON.stringify(cart)); }, [cart]);
-
-  useEffect(() => {
-    const calculateShipping = async () => {
-      if (customer.zip.trim().length >= 4 && cart.length > 0) {
-        try {
-          const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
-          const cost = await shippingService.calculate(customer.zip, totalItems);
-          setShippingCost(cost);
-        } catch (err) { setShippingCost(0); }
-      } else { setShippingCost(0); }
-    };
-    const timeoutId = setTimeout(calculateShipping, 500);
-    return () => clearTimeout(timeoutId);
-  }, [customer.zip, cart]);
 
   const addQuantity = (productId: number, size: string) => {
     setCart((prev) => {
@@ -84,9 +69,40 @@ export default function ProductsPage() {
     setCart(prev => prev.filter(item => !(item.product.id === productId && item.size === size)));
   };
 
+  // VALIDACIONES RESTAURADAS
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCustomer({ ...customer, [name]: value });
+
+    let errorMsg = '';
+    if ((name === 'firstName' || name === 'lastName' || name === 'city') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
+      errorMsg = 'Solo debe contener letras.';
+    } 
+    else if ((name === 'phone' || name === 'number' || name === 'zip') && value && !/^[0-9]+$/.test(value)) {
+      errorMsg = 'Solo debe contener números.';
+    }
+
+    if (name !== 'email') {
+      setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
+    } else {
+      setFormErrors(prev => ({ ...prev, email: '' }));
+    }
+  };
+
+  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setFormErrors(prev => ({ ...prev, email: 'Formato de correo inválido.' }));
+    }
+    if (name === 'email' || name === 'phone') {
+      handleSilentCapture();
+    }
+  };
+
+  const handleSilentCapture = async () => {
+    if (cart.length === 0 || (!customer.email.trim() && !customer.phone.trim())) return;
+    const cartContent = cart.map(item => `${item.quantity}x ${item.product.name} (${item.size})`).join(' | ');
+    try { await leadService.captureLead({ email: customer.email, phone: customer.phone, cartContent }); } catch (error) { console.error("Fallo captura silenciosa"); }
   };
 
   const submitOrder = async () => {
@@ -94,6 +110,7 @@ export default function ProductsPage() {
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.email.trim() || !customer.phone.trim() || !customer.street.trim() || !customer.number.trim() || !customer.zip.trim() || !customer.city.trim()) {
       return Swal.fire({ icon: 'error', title: 'Datos incompletos', text: 'Todos los campos son obligatorios.' });
     }
+    if (Object.values(formErrors).some(err => err !== '')) return Swal.fire({ icon: 'error', title: 'Formato inválido', text: 'Corrige los errores marcados en rojo.' });
     
     setIsProcessing(true);
     try {
@@ -113,7 +130,7 @@ export default function ProductsPage() {
 
       if (paymentMethod === 'TRANSFER') {
         const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
-        const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.order.orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 20% OFF + Envío): $${finalTotal.toLocaleString('es-AR')}.\nMi envío es a ${formattedAddress}. Solicito los datos bancarios.`;
+        const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.order.orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 15% OFF): $${finalTotal.toLocaleString('es-AR')}.\nMi envío (Gratis) es a ${formattedAddress}. Solicito los datos bancarios.`;
         const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
 
         Swal.fire({
@@ -155,8 +172,8 @@ export default function ProductsPage() {
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
 
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
-  const discountAmount = paymentMethod === 'TRANSFER' ? cartSubtotal * 0.20 : 0;
-  const finalTotal = cartSubtotal - discountAmount + shippingCost;
+  const discountAmount = paymentMethod === 'TRANSFER' ? cartSubtotal * 0.15 : 0;
+  const finalTotal = cartSubtotal - discountAmount;
 
   return (
     <>
@@ -181,6 +198,22 @@ export default function ProductsPage() {
         
         {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
+          
+          <div className="bg-brand-dark rounded-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
+            <div className="text-left mb-4 md:mb-0">
+              <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-brand-primary mb-1">¿Equipás un emprendimiento gastronómico o complejo?</h3>
+              <p className="text-xs md:text-sm text-brand-muted">Consultá precios directos de fábrica por volumen (exclusivo con CUIT).</p>
+            </div>
+            <a 
+              href="https://wa.me/5493516071362?text=Hola,%20busco%20equipar%20mi%20emprendimiento.%20Mi%20CUIT%20es:%20_____.%20Me%20interesa%20comprar%20por%20volumen%20los%20siguientes%20productos:" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-brand-primary hover:bg-orange-600 text-white px-6 py-3 rounded-md font-bold uppercase tracking-widest text-xs transition-all shadow-md whitespace-nowrap"
+            >
+              Consultar Mayorista
+            </a>
+          </div>
+
           <div className="relative mb-8 max-w-md">
             <Search className="absolute left-4 top-3.5 text-brand-muted" size={18} />
             <input type="search" placeholder="Buscar por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm" />
@@ -199,8 +232,15 @@ export default function ProductsPage() {
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                   {filteredProducts.filter(p => p.categoryName === category).map((product) => {
                     const totalStock = product.sizes ? product.sizes.reduce((acc, s) => acc + (s.stock || 0), 0) : 0;
+                    const transferPrice = product.salePrice * 0.85; 
+                    
                     return (
-                      <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300">
+                      <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative">
+                        
+                        <div className="absolute top-3 right-3 bg-brand-dark text-white text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-md z-10 flex items-center gap-1">
+                          <Truck size={12}/> Envío Gratis
+                        </div>
+
                         <Link to={`/producto/${product.sku}`} className="h-40 md:h-64 bg-brand-gray overflow-hidden relative block">
                           {product.imageUrls && product.imageUrls.length > 0 ? <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} className="md:w-16 md:h-16" /></div>}
                         </Link>
@@ -215,9 +255,16 @@ export default function ProductsPage() {
                                 <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">{Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF</span>
                               </div>
                             )}
-                            <p className={`text-base md:text-2xl font-black mb-4 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-primary'}`}>
-                              ${product.salePrice.toLocaleString('es-AR')}
-                            </p>
+                            
+                            <div className="mb-4">
+                              <p className={`text-base md:text-xl font-black leading-tight ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
+                                ${product.salePrice.toLocaleString('es-AR')} <span className="text-[9px] md:text-[10px] font-bold text-brand-muted uppercase tracking-wider block md:inline md:ml-1">/ 3 Cuotas s/interés</span>
+                              </p>
+                              <p className="text-sm md:text-lg font-black text-brand-primary mt-1 flex items-center gap-1 md:gap-2">
+                                ${transferPrice.toLocaleString('es-AR')} <span className="text-[9px] font-bold bg-orange-100 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider">Transferencia (-15%)</span>
+                              </p>
+                            </div>
+
                             <Link to={`/producto/${product.sku}`} className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}>
                               <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
                             </Link>
@@ -265,31 +312,58 @@ export default function ProductsPage() {
           )}
 
           <div className="space-y-4">
-            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Envío</h4>
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Destino (Logística)</h4>
+            
+            {/* INPUTS CON VALIDACIONES VISUALES RESTAURADAS */}
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
-              <input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
+              <div>
+                <input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+                {formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}
+              </div>
+              <div>
+                <input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+                {formErrors.lastName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.lastName}</span>}
+              </div>
             </div>
-            <input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
-            <input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded" />
+            
+            <div>
+              <input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+              {formErrors.email && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.email}</span>}
+            </div>
+            
+            <div>
+              <input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+              {formErrors.phone && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.phone}</span>}
+            </div>
             
             <div className="flex gap-3">
-              <input type="text" name="street" placeholder="Calle" value={customer.street} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-[2]" />
-              <input type="text" name="number" placeholder="Nro" value={customer.number} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-1" />
+              <div className="flex-[2]">
+                <input type="text" name="street" placeholder="Calle" value={customer.street} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+              </div>
+              <div className="flex-1">
+                <input type="text" name="number" placeholder="Nro" value={customer.number} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+                {formErrors.number && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.number}</span>}
+              </div>
             </div>
+            
             <div className="flex gap-3">
-              <input type="text" name="zip" placeholder="C.P." value={customer.zip} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-1" />
-              <input type="text" name="city" placeholder="Localidad" value={customer.city} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded flex-[2]" />
+              <div className="flex-1">
+                <input type="text" name="zip" placeholder="C.P." value={customer.zip} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+                {formErrors.zip && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.zip}</span>}
+              </div>
+              <div className="flex-[2]">
+                <input type="text" name="city" placeholder="Localidad" value={customer.city} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
+                {formErrors.city && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.city}</span>}
+              </div>
             </div>
 
-            {/* SECCIÓN MÉTODOS DE PAGO */}
             <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-6">Método de Pago</h4>
             <div className="flex flex-col gap-3 mb-4">
               <label className={`border p-3 md:p-4 rounded-lg cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === 'TRANSFER' ? 'border-brand-primary bg-orange-50 shadow-md transform scale-[1.02]' : 'border-brand-border bg-white hover:bg-brand-gray'}`}>
                 <input type="radio" name="payment" value="TRANSFER" checked={paymentMethod === 'TRANSFER'} onChange={() => setPaymentMethod('TRANSFER')} className="accent-brand-primary w-4 h-4" />
                 <div className="flex-1">
                   <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><Building2 size={16}/> Transferencia</p>
-                  <p className="text-xs text-brand-primary font-black mt-1">🔥 20% DE DESCUENTO</p>
+                  <p className="text-xs text-brand-primary font-black mt-1">🔥 15% DE DESCUENTO</p>
                 </div>
               </label>
               
@@ -297,12 +371,11 @@ export default function ProductsPage() {
                 <input type="radio" name="payment" value="MERCADO_PAGO" checked={paymentMethod === 'MERCADO_PAGO'} onChange={() => setPaymentMethod('MERCADO_PAGO')} className="accent-[#009EE3] w-4 h-4" />
                 <div className="flex-1">
                   <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><CreditCard size={16}/> Tarjetas / Mercado Pago</p>
-                  <p className="text-[10px] md:text-xs text-brand-muted mt-1 leading-tight">Crédito, Débito o dinero en cuenta.</p>
+                  <p className="text-[10px] md:text-xs text-brand-muted mt-1 leading-tight">Hasta 3 Cuotas Sin Interés.</p>
                 </div>
               </label>
             </div>
 
-            {/* RESUMEN FINAL */}
             <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
               <div className="flex justify-between text-brand-dark mb-2 text-sm">
                 <span>Subtotal lista:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
@@ -310,12 +383,12 @@ export default function ProductsPage() {
               
               {paymentMethod === 'TRANSFER' && (
                 <div className="flex justify-between text-green-600 mb-2 text-sm font-bold animate-fade-in">
-                  <span>Descuento (20%):</span> <span>-${discountAmount.toLocaleString('es-AR')}</span>
+                  <span>Descuento (15%):</span> <span>-${discountAmount.toLocaleString('es-AR')}</span>
                 </div>
               )}
 
-              <div className="flex justify-between text-brand-muted mb-4 text-sm">
-                <span>Envío (Est.):</span> <span>{shippingCost > 0 ? `$${shippingCost.toLocaleString('es-AR')}` : 'Calculando...'}</span>
+              <div className="flex justify-between text-brand-dark font-bold mb-4 text-sm">
+                <span>Costo de Envío:</span> <span className="text-green-600 flex items-center gap-1"><Truck size={14}/> GRATIS</span>
               </div>
               <h3 className="text-xl md:text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
                 <span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span>

@@ -112,25 +112,23 @@ function App() {
 
         <main className="flex-1 w-full relative z-10">
           <Routes>
-            {/* Nuevas rutas separadas */}
             <Route path="/" element={<HomePage />} />
             <Route path="/productos" element={<ProductsPage />} />
-            
             <Route path="/producto/:sku" element={<ProductDetailPage />} />
             <Route path="/tracking" element={<TrackingPage />} />
             <Route path="/como-comprar" element={<HowToBuyPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/terminos" element={<TermsPage />} />
             <Route path="/faq" element={<FaqPage />} />
-            <Route path="/pago-exitoso" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-green-600 font-bold mb-4">¡Pago Exitoso!</h1><p>Tu pedido está en preparación. Revisa tu email.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
-            <Route path="/pago-fallido" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-red-600 font-bold mb-4">El pago fue rechazado</h1><p>Intenta nuevamente desde el carrito.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
-            <Route path="/pago-pendiente" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-yellow-600 font-bold mb-4">Pago Pendiente</h1><p>Estamos esperando la confirmación de la red bancaria.</p><Link to="/" className="mt-6 text-brand-primary underline">Volver al inicio</Link></div>} />
+            {/* Rutas Mercado Pago */}
+            <Route path="/pago-exitoso" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-green-600 font-bold mb-4">¡Pago Exitoso!</h1><p>Tu pedido está en preparación. Revisa tu email.</p><Link to="/" className="mt-6 text-brand-primary underline font-bold uppercase tracking-widest">Volver al inicio</Link></div>} />
+            <Route path="/pago-fallido" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-red-600 font-bold mb-4">El pago fue rechazado</h1><p>Intenta nuevamente desde el carrito.</p><Link to="/productos" className="mt-6 text-brand-primary underline font-bold uppercase tracking-widest">Volver a Productos</Link></div>} />
+            <Route path="/pago-pendiente" element={<div className="h-screen flex flex-col justify-center items-center text-center"><h1 className="text-4xl text-yellow-600 font-bold mb-4">Pago Pendiente</h1><p>Estamos esperando la confirmación de la red bancaria.</p><Link to="/" className="mt-6 text-brand-primary underline font-bold uppercase tracking-widest">Volver al inicio</Link></div>} />
           </Routes>
         </main>
 
         <Footer />
 
-        {/* Botón Global Flotante WhatsApp */}
         <a 
           href="https://wa.me/5493516071362" 
           target="_blank" 
