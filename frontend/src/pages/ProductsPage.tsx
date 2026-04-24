@@ -18,7 +18,11 @@ export default function ProductsPage() {
     return savedCart ? JSON.parse(savedCart) : [];
   });
   
-  const [customer, setCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
+  const [customer, setCustomer] = useState(() => {
+    const savedCustomer = localStorage.getItem('fabrica_customer');
+    return savedCustomer ? JSON.parse(savedCustomer) : { firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' };
+  });
+
   const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
@@ -38,6 +42,7 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => { localStorage.setItem('fabrica_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { localStorage.setItem('fabrica_customer', JSON.stringify(customer)); }, [customer]); // Se auto-guarda
 
   const addQuantity = (productId: number, size: string) => {
     setCart((prev) => {
@@ -69,34 +74,22 @@ export default function ProductsPage() {
     setCart(prev => prev.filter(item => !(item.product.id === productId && item.size === size)));
   };
 
-  // VALIDACIONES RESTAURADAS
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCustomer({ ...customer, [name]: value });
 
     let errorMsg = '';
-    if ((name === 'firstName' || name === 'lastName' || name === 'city') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) {
-      errorMsg = 'Solo debe contener letras.';
-    } 
-    else if ((name === 'phone' || name === 'number' || name === 'zip') && value && !/^[0-9]+$/.test(value)) {
-      errorMsg = 'Solo debe contener números.';
-    }
+    if ((name === 'firstName' || name === 'lastName' || name === 'city') && value && !/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(value)) errorMsg = 'Solo debe contener letras.';
+    else if ((name === 'phone' || name === 'number' || name === 'zip') && value && !/^[0-9]+$/.test(value)) errorMsg = 'Solo debe contener números.';
 
-    if (name !== 'email') {
-      setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
-    } else {
-      setFormErrors(prev => ({ ...prev, email: '' }));
-    }
+    if (name !== 'email') setFormErrors(prev => ({ ...prev, [name]: errorMsg }));
+    else setFormErrors(prev => ({ ...prev, email: '' }));
   };
 
   const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setFormErrors(prev => ({ ...prev, email: 'Formato de correo inválido.' }));
-    }
-    if (name === 'email' || name === 'phone') {
-      handleSilentCapture();
-    }
+    if (name === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) setFormErrors(prev => ({ ...prev, email: 'Formato de correo inválido.' }));
+    if (name === 'email' || name === 'phone') handleSilentCapture();
   };
 
   const handleSilentCapture = async () => {
@@ -124,11 +117,13 @@ export default function ProductsPage() {
       };
       
       const response = await orderService.createPendingOrder(payload);
-      
-      setCart([]);
-      localStorage.removeItem('fabrica_cart');
 
       if (paymentMethod === 'TRANSFER') {
+
+        setCart([]);
+        localStorage.removeItem('fabrica_cart');
+        localStorage.removeItem('fabrica_customer');
+
         const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
         const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.order.orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 15% OFF): $${finalTotal.toLocaleString('es-AR')}.\nMi envío (Gratis) es a ${formattedAddress}. Solicito los datos bancarios.`;
         const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
@@ -140,6 +135,7 @@ export default function ProductsPage() {
         }).then(() => { window.location.href = waUrl; });
       } else {
         if (response.checkoutUrl) {
+
           window.location.href = response.checkoutUrl;
         } else {
           Swal.fire({ icon: 'error', title: 'Error de pasarela', text: 'No se pudo generar el link de pago.' });
@@ -195,36 +191,15 @@ export default function ProductsPage() {
       </div>
 
       <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-screen">
-        
-        {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
-          
-          <div className="bg-brand-dark rounded-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
-            <div className="text-left mb-4 md:mb-0">
-              <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-brand-primary mb-1">¿Equipás un emprendimiento gastronómico o complejo?</h3>
-              <p className="text-xs md:text-sm text-brand-muted">Consultá precios directos de fábrica por volumen (exclusivo con CUIT).</p>
-            </div>
-            <a 
-              href="https://wa.me/5493516071362?text=Hola,%20busco%20equipar%20mi%20emprendimiento.%20Mi%20CUIT%20es:%20_____.%20Me%20interesa%20comprar%20por%20volumen%20los%20siguientes%20productos:" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-brand-primary hover:bg-orange-600 text-white px-6 py-3 rounded-md font-bold uppercase tracking-widest text-xs transition-all shadow-md whitespace-nowrap"
-            >
-              Consultar Mayorista
-            </a>
-          </div>
 
           <div className="relative mb-8 max-w-md">
             <Search className="absolute left-4 top-3.5 text-brand-muted" size={18} />
-            <input type="search" placeholder="Buscar por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm" />
+            <input type="search" placeholder="Buscar por producto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border border-brand-border rounded-md text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all text-sm shadow-sm" />
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="text-center py-20 text-brand-muted flex flex-col items-center bg-white rounded-xl border border-brand-border">
-              <PackageOpen size={48} className="mb-4 opacity-50" />
-              <p className="text-lg">No hay productos en esta categoría.</p>
-              <button onClick={() => setSelectedCategory('Todas')} className="mt-4 text-brand-primary font-bold underline">Ver todo el catálogo</button>
-            </div>
+            <div className="text-center py-20 text-brand-muted flex flex-col items-center bg-white rounded-xl border border-brand-border"><PackageOpen size={48} className="mb-4 opacity-50" /><p className="text-lg">No hay productos en esta categoría.</p><button onClick={() => setSelectedCategory('Todas')} className="mt-4 text-brand-primary font-bold underline">Ver todo el catálogo</button></div>
           ) : (
             displayCategories.map(category => (
               <div key={category} className="mb-12">
@@ -236,18 +211,12 @@ export default function ProductsPage() {
                     
                     return (
                       <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative">
-                        
-                        <div className="absolute top-3 right-3 bg-brand-dark text-white text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-md z-10 flex items-center gap-1">
-                          <Truck size={12}/> Envío Gratis
-                        </div>
-
+                        <div className="absolute top-3 right-3 bg-brand-dark text-white text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded shadow-md z-10 flex items-center gap-1"><Truck size={12}/> Envío Gratis</div>
                         <Link to={`/producto/${product.sku}`} className="h-40 md:h-64 bg-brand-gray overflow-hidden relative block">
                           {product.imageUrls && product.imageUrls.length > 0 ? <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} className="md:w-16 md:h-16" /></div>}
                         </Link>
                         <div className="p-4 md:p-6 flex flex-col flex-1">
-                          <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors">
-                            <h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3>
-                          </Link>
+                          <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors"><h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3></Link>
                           <div className="mt-auto pt-4 relative">
                             {product.originalPrice && product.originalPrice > product.salePrice && (
                               <div className="flex items-center gap-2 mb-1">
@@ -257,11 +226,13 @@ export default function ProductsPage() {
                             )}
                             
                             <div className="mb-4">
-                              <p className={`text-base md:text-xl font-black leading-tight ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
-                                ${product.salePrice.toLocaleString('es-AR')} <span className="text-[9px] md:text-[10px] font-bold text-brand-muted uppercase tracking-wider block md:inline md:ml-1">/ 3 Cuotas s/interés</span>
+                              <p className={`text-base md:text-xl font-black leading-tight flex flex-col xl:flex-row xl:items-center gap-1 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
+                                ${product.salePrice.toLocaleString('es-AR')} 
+                                {/* INSIGNIA 3 CUOTAS MP EN GRILLA */}
+                                <span className="bg-[#00A650] text-white text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm w-max">3 Cuotas S/Interés</span>
                               </p>
-                              <p className="text-sm md:text-lg font-black text-brand-primary mt-1 flex items-center gap-1 md:gap-2">
-                                ${transferPrice.toLocaleString('es-AR')} <span className="text-[9px] font-bold bg-orange-100 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider">Transferencia (-15%)</span>
+                              <p className="text-sm md:text-lg font-black text-brand-primary mt-2 flex items-center gap-1 md:gap-2">
+                                ${transferPrice.toLocaleString('es-AR')} <span className="text-[9px] font-bold bg-orange-100 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider">Transf. (-15%)</span>
                               </p>
                             </div>
 
@@ -277,15 +248,23 @@ export default function ProductsPage() {
               </div>
             ))
           )}
+
+          {/* BANNER MAYORISTA MOVIDO ABAJO CON MARGEN SUPERIOR (mt-12) */}
+          <div className="bg-brand-dark rounded-xl p-6 mt-12 mb-8 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
+            <div className="text-left mb-4 md:mb-0">
+              <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-brand-primary mb-1">¿Equipás un emprendimiento gastronómico o complejo?</h3>
+              <p className="text-xs md:text-sm text-brand-muted">Consultá precios directos de fábrica por volumen (exclusivo con CUIT).</p>
+            </div>
+            <a href="https://wa.me/5493516071362?text=Hola,%20busco%20equipar%20mi%20emprendimiento.%20Mi%20CUIT%20es:%20_____.%20Me%20interesa%20comprar%20por%20volumen%20los%20siguientes%20productos:" target="_blank" rel="noopener noreferrer" className="bg-brand-primary hover:bg-orange-600 text-white px-6 py-3 rounded-md font-bold uppercase tracking-widest text-xs transition-all shadow-md whitespace-nowrap">Consultar Mayorista</a>
+          </div>
+
         </div>
 
         {/* LADO DERECHO: SIDEBAR DEL CARRITO */}
         <div className="w-full lg:w-[400px] lg:sticky lg:top-36 self-start bg-white p-5 md:p-6 rounded-xl border border-brand-border shadow-xl lg:max-h-[calc(100vh-10rem)] overflow-y-auto">
+          
           <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
-            <div className="flex items-center gap-3">
-              <ShoppingCart className="text-brand-primary" size={24} />
-              <h2 className="text-lg font-bold uppercase tracking-widest text-brand-dark m-0">Tu Pedido</h2>
-            </div>
+            <div className="flex items-center gap-3"><ShoppingCart className="text-brand-primary" size={24} /><h2 className="text-lg font-bold uppercase tracking-widest text-brand-dark m-0">Tu Pedido</h2></div>
             <span className="bg-brand-gray text-brand-dark text-xs font-bold px-2 py-1 rounded-full">{cart.reduce((a, b) => a + b.quantity, 0)} ítems</span>
           </div>
           
@@ -314,47 +293,20 @@ export default function ProductsPage() {
           <div className="space-y-4">
             <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Destino (Logística)</h4>
             
-            {/* INPUTS CON VALIDACIONES VISUALES RESTAURADAS */}
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-                {formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}
-              </div>
-              <div>
-                <input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-                {formErrors.lastName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.lastName}</span>}
-              </div>
+              <div><input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}</div>
+              <div><input type="text" name="lastName" placeholder="Apellido" value={customer.lastName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.lastName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.lastName}</span>}</div>
             </div>
-            
-            <div>
-              <input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-              {formErrors.email && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.email}</span>}
-            </div>
-            
-            <div>
-              <input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-              {formErrors.phone && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.phone}</span>}
-            </div>
+            <div><input type="email" name="email" placeholder="Email" value={customer.email} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.email && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.email}</span>}</div>
+            <div><input type="tel" name="phone" placeholder="Teléfono" value={customer.phone} onChange={handleCustomerChange} onBlur={handleInputBlur} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.phone && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.phone}</span>}</div>
             
             <div className="flex gap-3">
-              <div className="flex-[2]">
-                <input type="text" name="street" placeholder="Calle" value={customer.street} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-              </div>
-              <div className="flex-1">
-                <input type="text" name="number" placeholder="Nro" value={customer.number} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-                {formErrors.number && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.number}</span>}
-              </div>
+              <div className="flex-[2]"><input type="text" name="street" placeholder="Calle" value={customer.street} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" /></div>
+              <div className="flex-1"><input type="text" name="number" placeholder="Nro" value={customer.number} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.number && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.number}</span>}</div>
             </div>
-            
             <div className="flex gap-3">
-              <div className="flex-1">
-                <input type="text" name="zip" placeholder="C.P." value={customer.zip} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-                {formErrors.zip && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.zip}</span>}
-              </div>
-              <div className="flex-[2]">
-                <input type="text" name="city" placeholder="Localidad" value={customer.city} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />
-                {formErrors.city && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.city}</span>}
-              </div>
+              <div className="flex-1"><input type="text" name="zip" placeholder="C.P." value={customer.zip} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.zip && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.zip}</span>}</div>
+              <div className="flex-[2]"><input type="text" name="city" placeholder="Localidad" value={customer.city} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.city && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.city}</span>}</div>
             </div>
 
             <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-6">Método de Pago</h4>
@@ -377,29 +329,13 @@ export default function ProductsPage() {
             </div>
 
             <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
-              <div className="flex justify-between text-brand-dark mb-2 text-sm">
-                <span>Subtotal lista:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span>
-              </div>
-              
-              {paymentMethod === 'TRANSFER' && (
-                <div className="flex justify-between text-green-600 mb-2 text-sm font-bold animate-fade-in">
-                  <span>Descuento (15%):</span> <span>-${discountAmount.toLocaleString('es-AR')}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between text-brand-dark font-bold mb-4 text-sm">
-                <span>Costo de Envío:</span> <span className="text-green-600 flex items-center gap-1"><Truck size={14}/> GRATIS</span>
-              </div>
-              <h3 className="text-xl md:text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4">
-                <span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span>
-              </h3>
+              <div className="flex justify-between text-brand-dark mb-2 text-sm"><span>Subtotal lista:</span> <span>${cartSubtotal.toLocaleString('es-AR')}</span></div>
+              {paymentMethod === 'TRANSFER' && <div className="flex justify-between text-green-600 mb-2 text-sm font-bold animate-fade-in"><span>Descuento (15%):</span> <span>-${discountAmount.toLocaleString('es-AR')}</span></div>}
+              <div className="flex justify-between text-brand-dark font-bold mb-4 text-sm"><span>Costo de Envío:</span> <span className="text-green-600 flex items-center gap-1"><Truck size={14}/> GRATIS</span></div>
+              <h3 className="text-xl md:text-2xl font-black text-brand-dark flex justify-between border-t border-brand-border pt-4"><span>Total:</span> <span className="text-brand-primary">${finalTotal.toLocaleString('es-AR')}</span></h3>
             </div>
             
-            <button 
-              onClick={submitOrder} 
-              disabled={isProcessing}
-              className={`w-full py-4 font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 shadow-xl text-sm ${isProcessing ? 'bg-gray-400 text-white cursor-not-allowed' : paymentMethod === 'MERCADO_PAGO' ? 'bg-[#009EE3] hover:bg-[#0088c4] text-white shadow-[#009EE3]/40 hover:scale-105' : 'bg-brand-dark hover:bg-brand-primary text-white hover:scale-105'}`}
-            >
+            <button onClick={submitOrder} disabled={isProcessing} className={`w-full py-4 font-bold uppercase tracking-[0.2em] rounded-md transition-all duration-300 shadow-xl text-sm ${isProcessing ? 'bg-gray-400 text-white cursor-not-allowed' : paymentMethod === 'MERCADO_PAGO' ? 'bg-[#009EE3] hover:bg-[#0088c4] text-white shadow-[#009EE3]/40 hover:scale-105' : 'bg-brand-dark hover:bg-brand-primary text-white hover:scale-105'}`}>
               {isProcessing ? 'Procesando...' : paymentMethod === 'MERCADO_PAGO' ? 'Pagar con Mercado Pago' : 'Confirmar y Ver WhatsApp'}
             </button>
           </div>

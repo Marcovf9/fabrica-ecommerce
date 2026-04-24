@@ -111,7 +111,7 @@ public class OrderService {
             subTotalProducts = subTotalProducts.multiply(new BigDecimal("0.80"));
         }
 
-        BigDecimal finalTotalSale = subTotalProducts.add(shippingCost);
+        BigDecimal finalTotalSale = subTotalProducts;
         order.setTotalSaleAmount(finalTotalSale);
         Order savedOrder = orderRepository.save(order);
 

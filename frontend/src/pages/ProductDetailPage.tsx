@@ -5,7 +5,7 @@ import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Camera, ShoppingCart, Tag, Box, Ruler, Truck } from 'lucide-react';
+import { ArrowLeft, Camera, ShoppingCart, Tag, Box, Ruler, Truck, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 
 export default function ProductDetailPage() {
   const { sku } = useParams();
@@ -23,12 +23,9 @@ export default function ProductDetailPage() {
         const found = catalog.find(p => p.sku === sku);
         if (found) { 
           setProduct(found);
-          if (found.sizes && found.sizes.length === 1) {
-            setSelectedSize(found.sizes[0].size);
-          }
-        } 
-        else {
-          Swal.fire({ icon: 'error', title: 'Extraviado', text: 'El producto no existe o fue dado de baja.' });
+          if (found.sizes && found.sizes.length === 1) setSelectedSize(found.sizes[0].size);
+        } else {
+          Swal.fire({ icon: 'error', title: 'Extraviado' });
           navigate('/');
         }
       } catch (err) { Swal.fire({ icon: 'error', title: 'Error de Red' }); } 
@@ -40,31 +37,25 @@ export default function ProductDetailPage() {
   const currentSizeData = product?.sizes?.find(s => s.size === selectedSize);
   const availableStock = currentSizeData ? currentSizeData.stock : 0;
 
+  const nextImage = () => { if (product?.imageUrls) setCurrentImageIndex((prev) => (prev + 1) % product.imageUrls.length); };
+  const prevImage = () => { if (product?.imageUrls) setCurrentImageIndex((prev) => (prev === 0 ? product.imageUrls.length - 1 : prev - 1)); };
+
   const handleAddToCartAndReturn = () => {
     if (!product || availableStock <= 0) return;
-    
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      Swal.fire({ icon: 'warning', title: 'Falta información', text: 'Por favor, selecciona una medida.' });
-      return;
-    }
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) return Swal.fire({ icon: 'warning', text: 'Selecciona una medida.' });
 
     const savedCart = localStorage.getItem('fabrica_cart');
     let currentCart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
-    
     const existingIndex = currentCart.findIndex(item => item.product.id === product.id && item.size === selectedSize);
     
     if (existingIndex >= 0) {
-      if (currentCart[existingIndex].quantity >= availableStock) {
-        Swal.fire({ icon: 'warning', title: 'Límite de stock', text: `Solo quedan ${availableStock} unidades de esta variante.`});
-        return;
-      }
+      if (currentCart[existingIndex].quantity >= availableStock) return Swal.fire({ icon: 'warning', text: `Solo quedan ${availableStock} unid.`});
       currentCart[existingIndex].quantity += 1;
     } else {
       currentCart.push({ product, quantity: 1, size: selectedSize || 'Estándar' });
     }
     
     localStorage.setItem('fabrica_cart', JSON.stringify(currentCart));
-    Swal.fire({ icon: 'success', title: 'Agregado al pedido', timer: 1500, showConfirmButton: false });
     navigate('/productos');
   };
 
@@ -75,10 +66,7 @@ export default function ProductDetailPage() {
 
   return (
     <>
-      <Helmet>
-        <title>{product.name} | Ritual Espacios</title>
-        <meta name="description" content={product.description?.substring(0, 150) + "..."} />
-      </Helmet>
+      <Helmet><title>{product.name} | Ritual Espacios</title></Helmet>
 
       <div className="max-w-[1600px] w-[95%] mx-auto py-6 md:py-10">
         <Link to="/productos" className="inline-flex items-center gap-2 text-brand-primary text-xs md:text-sm font-bold tracking-widest uppercase hover:text-orange-500 transition-colors mb-6 md:mb-8">
@@ -87,36 +75,35 @@ export default function ProductDetailPage() {
         
         <div className="bg-white rounded-2xl flex flex-col lg:flex-row border border-brand-border overflow-hidden shadow-sm">
           
-          <div className="flex-[1.2] bg-brand-gray relative min-h-[300px] md:min-h-[400px] lg:min-h-[600px] flex items-center justify-center p-4 md:p-8">
+          <div className="flex-[1.2] bg-brand-gray relative min-h-[300px] md:min-h-[400px] lg:min-h-[600px] flex items-center justify-center p-4 md:p-8 group">
             
-            {/* INSIGNIA ENVÍO GRATIS */}
             <div className="absolute top-6 left-6 bg-brand-dark text-white text-[10px] md:text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded shadow-lg z-10 flex items-center gap-2">
-              <Truck size={16}/> Envío Gratis a todo el país
+              <Truck size={16}/> Envío Gratis
             </div>
 
             {product.imageUrls && product.imageUrls.length > 0 ? (
               <>
+                {product.imageUrls.length > 1 && (
+                  <>
+                    <button onClick={prevImage} className="absolute left-4 md:left-8 bg-white/80 p-2 rounded-full shadow-md hover:bg-brand-primary hover:text-white transition-colors z-20 opacity-0 group-hover:opacity-100"><ChevronLeft size={24}/></button>
+                    <button onClick={nextImage} className="absolute right-4 md:right-8 bg-white/80 p-2 rounded-full shadow-md hover:bg-brand-primary hover:text-white transition-colors z-20 opacity-0 group-hover:opacity-100"><ChevronRight size={24}/></button>
+                  </>
+                )}
                 <img src={optimizeCloudinaryUrl(product.imageUrls[currentImageIndex], 1000)} alt={product.name} className="w-full h-full object-contain max-h-[350px] md:max-h-[700px] animate-fade-in drop-shadow-md" />
                 {product.imageUrls.length > 1 && (
                   <div className="absolute bottom-4 md:bottom-6 flex gap-2 md:gap-3 w-full justify-center bg-white/60 py-2 md:py-3 backdrop-blur-sm shadow-sm rounded-full mx-auto max-w-fit px-4 md:px-6">
                     {product.imageUrls.map((_, idx) => (
-                      <button 
-                        key={idx} onClick={() => setCurrentImageIndex(idx)}
-                        className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-all duration-300 shadow-sm ${currentImageIndex === idx ? 'bg-brand-primary scale-125' : 'bg-brand-muted hover:bg-brand-dark'}`}
-                      />
+                      <button key={idx} onClick={() => setCurrentImageIndex(idx)} className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full transition-all duration-300 shadow-sm ${currentImageIndex === idx ? 'bg-brand-primary scale-125' : 'bg-brand-muted hover:bg-brand-dark'}`} />
                     ))}
                   </div>
                 )}
               </>
-            ) : (
-              <Camera className="text-brand-muted opacity-50" size={60} />
-            )}
+            ) : ( <Camera className="text-brand-muted opacity-50" size={60} /> )}
           </div>
 
           <div className="flex-1 p-5 md:p-8 lg:p-12 flex flex-col justify-center">
             <h1 className="text-2xl md:text-4xl lg:text-5xl text-brand-dark font-light uppercase tracking-widest mb-2 md:mb-4">{product.name}</h1>
             
-            {/* BLOQUE PRECIO DUAL */}
             <div className="mb-6 md:mb-8 border-b border-brand-border pb-6">
               {product.originalPrice && product.originalPrice > product.salePrice && (
                 <div className="flex items-center gap-2 mb-2">
@@ -124,18 +111,23 @@ export default function ProductDetailPage() {
                   <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">{Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF</span>
                 </div>
               )}
-              <p className={`text-3xl md:text-4xl font-black leading-tight ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
-                ${product.salePrice.toLocaleString('es-AR')} <span className="text-xs md:text-sm font-bold text-brand-muted uppercase tracking-wider block md:inline md:ml-2">/ 3 Cuotas sin interés</span>
-              </p>
+              
+              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
+                <p className={`text-3xl md:text-4xl font-black leading-tight ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
+                  ${product.salePrice.toLocaleString('es-AR')}
+                </p>
+                {/* INSIGNIA 3 CUOTAS MP */}
+                <span className="bg-[#00A650] text-white text-[10px] md:text-xs font-black uppercase tracking-wider px-2 py-1 rounded shadow-sm w-max flex items-center gap-1"><CreditCard size={12}/> 3 Cuotas sin interés</span>
+              </div>
+
               <p className="text-xl md:text-2xl font-black text-brand-primary mt-2 flex items-center gap-2">
-                ${transferPrice.toLocaleString('es-AR')} <span className="text-[10px] md:text-xs font-bold bg-orange-100 text-brand-primary px-2 py-1 rounded uppercase tracking-wider">Precio por Transferencia (-15%)</span>
+                ${transferPrice.toLocaleString('es-AR')} <span className="text-[10px] md:text-xs font-bold bg-orange-100 text-brand-primary px-2 py-1 rounded uppercase tracking-wider">Por Transferencia (-15%)</span>
               </p>
             </div>
             
+            {/* ... (Todo el resto del componente queda exactamente igual: description, sizes, add to cart button) ... */}
             <div className="bg-brand-gray p-4 md:p-6 rounded-lg mb-6 md:mb-8 border border-brand-border">
-              <p className="text-brand-dark whitespace-pre-wrap leading-relaxed text-sm md:text-base">
-                {product.description || "Sin especificaciones técnicas registradas."}
-              </p>
+              <p className="text-brand-dark whitespace-pre-wrap leading-relaxed text-sm md:text-base">{product.description || "Sin especificaciones técnicas registradas."}</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
@@ -159,19 +151,9 @@ export default function ProductDetailPage() {
                     const sizeName = s.size || `Medida-${idx}`;
                     const sizeStock = s.stock || 0;
                     return (
-                      <button
-                        key={sizeName}
-                        onClick={() => setSelectedSize(sizeName)}
-                        className={`px-4 md:px-5 py-2.5 md:py-3 border-2 rounded-lg font-bold tracking-wider uppercase transition-all duration-200 flex flex-col items-center
-                          ${selectedSize === sizeName 
-                            ? 'border-brand-primary bg-brand-primary text-white shadow-md' 
-                            : 'border-brand-border bg-white text-brand-dark hover:border-brand-primary hover:text-brand-primary'
-                          } ${sizeStock <= 0 ? 'opacity-50' : ''}`}
-                      >
+                      <button key={sizeName} onClick={() => setSelectedSize(sizeName)} className={`px-4 md:px-5 py-2.5 md:py-3 border-2 rounded-lg font-bold tracking-wider uppercase transition-all duration-200 flex flex-col items-center ${selectedSize === sizeName ? 'border-brand-primary bg-brand-primary text-white shadow-md' : 'border-brand-border bg-white text-brand-dark hover:border-brand-primary hover:text-brand-primary'} ${sizeStock <= 0 ? 'opacity-50' : ''}`}>
                         <span className="text-sm md:text-base">{sizeName}</span>
-                        <span className={`text-[9px] md:text-[10px] ${selectedSize === sizeName ? 'text-white/80' : 'text-brand-muted'}`}>
-                          {sizeStock > 0 ? `${sizeStock} disp.` : 'Agotado'}
-                        </span>
+                        <span className={`text-[9px] md:text-[10px] ${selectedSize === sizeName ? 'text-white/80' : 'text-brand-muted'}`}>{sizeStock > 0 ? `${sizeStock} disp.` : 'Agotado'}</span>
                       </button>
                     )
                   })}
@@ -179,14 +161,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            <button 
-              onClick={handleAddToCartAndReturn} 
-              disabled={availableStock <= 0 || (product.sizes?.length > 0 && !selectedSize)}
-              className={`w-full py-4 md:py-5 px-6 text-sm md:text-base font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-3 transition-all duration-300 
-                ${(availableStock > 0 && (!product.sizes?.length || selectedSize)) 
-                  ? 'bg-brand-primary hover:bg-orange-600 text-white shadow-lg' 
-                  : 'bg-brand-border text-brand-muted cursor-not-allowed'}`}
-            >
+            <button onClick={handleAddToCartAndReturn} disabled={availableStock <= 0 || (product.sizes?.length > 0 && !selectedSize)} className={`w-full py-4 md:py-5 px-6 text-sm md:text-base font-bold uppercase tracking-widest rounded-lg flex items-center justify-center gap-3 transition-all duration-300 ${(availableStock > 0 && (!product.sizes?.length || selectedSize)) ? 'bg-brand-primary hover:bg-orange-600 text-white shadow-lg' : 'bg-brand-border text-brand-muted cursor-not-allowed'}`}>
               <ShoppingCart size={20} className="md:w-6 md:h-6" /> 
               {!selectedSize && product.sizes?.length > 0 ? 'Selecciona una medida' : (availableStock <= 0 ? 'Agotado' : 'Agregar y Continuar')}
             </button>
