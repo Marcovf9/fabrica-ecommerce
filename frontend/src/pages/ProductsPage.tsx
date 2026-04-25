@@ -42,7 +42,7 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => { localStorage.setItem('fabrica_cart', JSON.stringify(cart)); }, [cart]);
-  useEffect(() => { localStorage.setItem('fabrica_customer', JSON.stringify(customer)); }, [customer]); // Se auto-guarda
+  useEffect(() => { localStorage.setItem('fabrica_customer', JSON.stringify(customer)); }, [customer]);
 
   const addQuantity = (productId: number, size: string) => {
     setCart((prev) => {
@@ -119,7 +119,6 @@ export default function ProductsPage() {
       const response = await orderService.createPendingOrder(payload);
 
       if (paymentMethod === 'TRANSFER') {
-
         setCart([]);
         localStorage.removeItem('fabrica_cart');
         localStorage.removeItem('fabrica_customer');
@@ -135,7 +134,6 @@ export default function ProductsPage() {
         }).then(() => { window.location.href = waUrl; });
       } else {
         if (response.checkoutUrl) {
-
           window.location.href = response.checkoutUrl;
         } else {
           Swal.fire({ icon: 'error', title: 'Error de pasarela', text: 'No se pudo generar el link de pago.' });
@@ -191,6 +189,8 @@ export default function ProductsPage() {
       </div>
 
       <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-screen">
+        
+        {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
 
           <div className="relative mb-8 max-w-md">
@@ -249,7 +249,7 @@ export default function ProductsPage() {
             ))
           )}
 
-          {/* BANNER MAYORISTA MOVIDO ABAJO CON MARGEN SUPERIOR (mt-12) */}
+          {/* BANNER MAYORISTA (ÚNICO Y AL FINAL DE TODO) */}
           <div className="bg-brand-dark rounded-xl p-6 mt-12 mb-8 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
             <div className="text-left mb-4 md:mb-0">
               <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-brand-primary mb-1">¿Equipás un emprendimiento gastronómico o complejo?</h3>
