@@ -25,10 +25,21 @@ export default function ProductsPage() {
 
   const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Inicializa con el estado de la navegación o 'Todas' por defecto
   const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
   
   const [paymentMethod, setPaymentMethod] = useState<'TRANSFER' | 'MERCADO_PAGO'>('TRANSFER');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Efecto para escuchar si venimos navegando desde la HomePage y actualizar la categoría seleccionada
+  useEffect(() => {
+    if (location.state?.category) {
+      setSelectedCategory(location.state.category);
+      // Limpiamos el state del historial para que si recarga la página no se quede trabado
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -177,9 +188,23 @@ export default function ProductsPage() {
     { name: 'Muebles de exterior sostenibles', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776970228/Muebles_de_exterior_1_p45uhn.png' }
   ];
   
+  // FILTRO A PRUEBA DE BALAS (Maneja Singulares, Plurales, Mayúsculas y Minúsculas)
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch && (selectedCategory === 'Todas' || p.categoryName === selectedCategory);
+    const searchLower = searchTerm.toLowerCase().trim();
+    const matchesSearch = !searchLower || p.name.toLowerCase().includes(searchLower) || p.sku.toLowerCase().includes(searchLower);
+    
+    if (selectedCategory === 'Todas') return matchesSearch;
+    
+    const prodCat = (p.categoryName || '').toLowerCase().trim();
+    const selCat = selectedCategory.toLowerCase().trim();
+    
+    const matchesCategory = prodCat === selCat || 
+                            prodCat + 's' === selCat || 
+                            selCat + 's' === prodCat ||
+                            prodCat.includes(selCat.replace(/s$/, '')) ||
+                            selCat.includes(prodCat.replace(/s$/, ''));
+                            
+    return matchesSearch && matchesCategory;
   });
   
   const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
@@ -239,7 +264,6 @@ export default function ProductsPage() {
                           <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors"><h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3></Link>
                           <div className="mt-auto pt-4 flex flex-col h-full justify-end">
                             
-                            {/* NUEVO FORMATO DE PRECIOS EXACTO A LA FOTO */}
                             <div className="flex flex-col gap-0.5 mb-4">
                               {product.originalPrice && product.originalPrice > product.salePrice && (
                                 <span className="text-sm text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
@@ -254,7 +278,6 @@ export default function ProductsPage() {
                               <span className="text-sm md:text-base font-black text-brand-primary">${transferPrice.toLocaleString('es-AR')} con TRANSFERENCIA</span>
                             </div>
 
-                            {/* BOTONERA Y QUICK SELECT */}
                             <div className="flex gap-2 h-10 md:h-12 mt-auto">
                               <Link to={`/producto/${product.sku}`} className="flex-1 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 bg-brand-dark hover:bg-brand-primary text-white shadow-md">
                                 <Eye size={16} /> Detalles
@@ -305,7 +328,6 @@ export default function ProductsPage() {
 
         </div>
 
-        {/* LADO DERECHO: SIDEBAR DEL CARRITO */}
         <div className="w-full lg:w-[400px] lg:sticky lg:top-36 self-start bg-white p-5 md:p-6 rounded-xl border border-brand-border shadow-xl lg:max-h-[calc(100vh-10rem)] overflow-y-auto">
           
           <div className="flex items-center justify-between mb-6 border-b border-brand-border pb-4">
