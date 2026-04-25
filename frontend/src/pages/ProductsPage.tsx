@@ -26,17 +26,14 @@ export default function ProductsPage() {
   const [formErrors, setFormErrors] = useState({ firstName: '', lastName: '', email: '', phone: '', street: '', number: '', zip: '', city: '' });
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Inicializa con el estado de la navegación o 'Todas' por defecto
   const [selectedCategory, setSelectedCategory] = useState(location.state?.category || 'Todas');
   
   const [paymentMethod, setPaymentMethod] = useState<'TRANSFER' | 'MERCADO_PAGO'>('TRANSFER');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Efecto para escuchar si venimos navegando desde la HomePage y actualizar la categoría seleccionada
   useEffect(() => {
     if (location.state?.category) {
       setSelectedCategory(location.state.category);
-      // Limpiamos el state del historial para que si recarga la página no se quede trabado
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -188,26 +185,32 @@ export default function ProductsPage() {
     { name: 'Muebles de exterior sostenibles', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776970228/Muebles_de_exterior_1_p45uhn.png' }
   ];
   
-  // FILTRO A PRUEBA DE BALAS (Maneja Singulares, Plurales, Mayúsculas y Minúsculas)
+  // FILTRO INTELIGENTE CORREGIDO
   const filteredProducts = products.filter(p => {
     const searchLower = searchTerm.toLowerCase().trim();
     const matchesSearch = !searchLower || p.name.toLowerCase().includes(searchLower) || p.sku.toLowerCase().includes(searchLower);
     
     if (selectedCategory === 'Todas') return matchesSearch;
     
-    const prodCat = (p.categoryName || '').toLowerCase().trim();
-    const selCat = selectedCategory.toLowerCase().trim();
+    const normalize = (text?: string) => (text || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     
-    const matchesCategory = prodCat === selCat || 
-                            prodCat + 's' === selCat || 
-                            selCat + 's' === prodCat ||
-                            prodCat.includes(selCat.replace(/s$/, '')) ||
-                            selCat.includes(prodCat.replace(/s$/, ''));
+    const prodCat = normalize(p.categoryName);
+    const selCat = normalize(selectedCategory);
+    
+    let matchesCategory = false;
+    if (selCat.includes('parri') && prodCat.includes('parri')) matchesCategory = true;
+    else if (selCat.includes('chule') && prodCat.includes('chule')) matchesCategory = true;
+    else if (selCat.includes('acces') && prodCat.includes('acces')) matchesCategory = true;
+    else if (selCat.includes('fogon') && prodCat.includes('fogon')) matchesCategory = true;
+    else if (selCat.includes('muebl') && prodCat.includes('muebl')) matchesCategory = true;
+    else if (prodCat.includes(selCat) || selCat.includes(prodCat)) matchesCategory = true;
                             
     return matchesSearch && matchesCategory;
   });
   
-  const displayCategories = Array.from(new Set(filteredProducts.map(p => p.categoryName)));
+  const displayCategories = selectedCategory === 'Todas' 
+    ? Array.from(new Set(filteredProducts.map(p => p.categoryName || 'Otros')))
+    : [selectedCategory];
 
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.salePrice * item.quantity), 0);
   const discountAmount = paymentMethod === 'TRANSFER' ? cartSubtotal * 0.15 : 0;
@@ -244,11 +247,13 @@ export default function ProductsPage() {
           {filteredProducts.length === 0 ? (
             <div className="text-center py-20 text-brand-muted flex flex-col items-center bg-white rounded-xl border border-brand-border"><PackageOpen size={48} className="mb-4 opacity-50" /><p className="text-lg">No hay productos en esta categoría.</p><button onClick={() => setSelectedCategory('Todas')} className="mt-4 text-brand-primary font-bold underline">Ver todo el catálogo</button></div>
           ) : (
-            displayCategories.map(category => (
-              <div key={category} className="mb-12">
-                <h2 className="text-lg md:text-2xl text-brand-dark font-light uppercase tracking-[0.15em] border-b border-brand-border pb-3 mb-6">{category}</h2>
+            displayCategories.map(categoryTitle => (
+              <div key={categoryTitle} className="mb-12">
+                <h2 className="text-lg md:text-2xl text-brand-dark font-light uppercase tracking-[0.15em] border-b border-brand-border pb-3 mb-6">{categoryTitle}</h2>
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                  {filteredProducts.filter(p => p.categoryName === category).map((product) => {
+                  {filteredProducts
+                    .filter(p => selectedCategory === 'Todas' ? (p.categoryName || 'Otros') === categoryTitle : true)
+                    .map((product) => {
                     const totalStock = product.sizes ? product.sizes.reduce((acc, s) => acc + (s.stock || 0), 0) : 0;
                     const transferPrice = product.salePrice * 0.85; 
                     const installmentPrice = product.salePrice / 3;
