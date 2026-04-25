@@ -94,18 +94,33 @@ public class ProductService {
     }
 
     @Transactional
-    public Product updateProduct(Long id, ProductRequestDTO request) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
-        product.setName(request.name());
-        product.setDescription(request.description());
-        product.setSalePrice(request.salePrice());
-        product.setOriginalPrice(request.originalPrice());
+    public Product updateProduct(Long id, Long categoryId, String sku, String name, String description, BigDecimal salePrice, BigDecimal originalPrice, List<String> sizes, MultipartFile[] images, Boolean clearImages) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
         
-        if (request.sizes() != null) {
-            product.setSizes(request.sizes());
+        if (categoryId != null) product.setCategory(categoryRepository.findById(categoryId).orElseThrow());
+        if (sku != null) product.setSku(sku);
+        if (name != null) product.setName(name);
+        if (description != null) product.setDescription(description);
+        if (salePrice != null) product.setSalePrice(salePrice);
+        product.setOriginalPrice(originalPrice);
+        if (sizes != null) product.setSizes(sizes);
+        
+        if (clearImages != null && clearImages) {
+            product.getImages().clear();
         }
-        
+
+        if (images != null && images.length > 0) {
+            for (MultipartFile file : images) {
+                if (!file.isEmpty()) {
+                    String url = fileStorageService.storeFile(file);
+                    ProductImage pi = new ProductImage();
+                    pi.setImageUrl(url);
+                    pi.setProduct(product);
+                    pi.setIsPrimary(product.getImages().isEmpty());
+                    product.getImages().add(pi);
+                }
+            }
+        }
         return productRepository.save(product);
     }
 

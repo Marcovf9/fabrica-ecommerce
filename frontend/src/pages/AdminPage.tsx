@@ -123,66 +123,79 @@ export default function AdminPage() {
     catch (error) { handleApiError(error); }
   };
 
-  const handleEditPrice = async (product: Product) => {
+  const handleDeleteOrder = async (orderCode: string) => {
+    const result = await Swal.fire({ title: '¿Eliminar de la base?', text: 'Se borrará permanentemente este pedido de prueba.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#e74c3c' });
+    if (result.isConfirmed) { 
+      try { 
+        await adminService.deleteOrder(orderCode); 
+        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false }); 
+        loadOrders(); 
+      } catch (error: any) { handleApiError(error); } 
+    }
+  };
+
+  const handleEditProduct = async (product: Product) => {
+    let catId = 1;
+    switch(product.categoryName) { case 'Parrillas': catId = 1; break; case 'Chulengos': catId = 2; break; case 'Accesorios': catId = 3; break; case 'Fogoneros': catId = 4; break; case 'Muebles de exterior sostenibles': catId = 5; break; }
+
     const { value: formValues } = await Swal.fire({
-      title: 'Gestionar Precios',
+      title: 'Editar Producto',
+      width: '600px',
       html:
         `<div class="flex flex-col gap-4 text-left p-2">` +
-          `<div>` +
-            `<label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Precio de Venta (Real)</label>` +
-            `<input id="swal-salePrice" class="swal2-input !m-0 !w-full !text-sm" type="number" placeholder="Precio actual" value="${product.salePrice}">` +
+          `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Nombre</label><input id="swal-name" class="swal2-input !m-0 !w-full !text-sm" type="text" value="${product.name}"></div>` +
+          `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Descripción</label><textarea id="swal-desc" class="swal2-textarea !m-0 !w-full !text-sm">${product.description}</textarea></div>` +
+          `<div class="flex gap-2">` +
+            `<div class="flex-1"><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Precio Real</label><input id="swal-salePrice" class="swal2-input !m-0 !w-full !text-sm" type="number" value="${product.salePrice}"></div>` +
+            `<div class="flex-1"><label class="text-[10px] font-bold uppercase text-brand-primary mb-1 block">Precio Tachado</label><input id="swal-originalPrice" class="swal2-input !m-0 !w-full !text-sm" type="number" value="${product.originalPrice || ''}"></div>` +
           `</div>` +
-          `<div>` +
-            `<label class="text-[10px] font-bold uppercase text-brand-primary mb-1 block">Precio Original (Para tacho/descuento)</label>` +
-            `<input id="swal-originalPrice" class="swal2-input !m-0 !w-full !text-sm" type="number" placeholder="Ej: 200000" value="${product.originalPrice || ''}">` +
-            `<p class="text-[9px] text-gray-400 mt-1">* Dejar vacío para quitar el descuento.</p>` +
+          `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Medidas (separadas por coma)</label><input id="swal-sizes" class="swal2-input !m-0 !w-full !text-sm" type="text" value="${product.sizes?.map(s => s.size).join(', ') || ''}"></div>` +
+          `<div class="mt-2 p-3 bg-brand-gray border border-brand-border rounded">` +
+            `<label class="text-[10px] font-bold uppercase text-brand-muted mb-2 block">Nuevas Imágenes (Opcional)</label>` +
+            `<input type="file" id="swal-images" multiple accept="image/*" class="w-full text-xs mb-2">` +
+            `<label class="flex items-center gap-2 cursor-pointer mt-3"><input type="checkbox" id="swal-clear-images" class="w-4 h-4 accent-red-500"><span class="text-xs text-red-600 font-bold uppercase">Borrar imágenes anteriores</span></label>` +
           `</div>` +
         `</div>`,
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Guardar Cambios',
       confirmButtonColor: '#D67026',
-      cancelButtonText: 'Cancelar',
       preConfirm: () => {
+        const name = (document.getElementById('swal-name') as HTMLInputElement).value;
+        const desc = (document.getElementById('swal-desc') as HTMLTextAreaElement).value;
         const salePrice = (document.getElementById('swal-salePrice') as HTMLInputElement).value;
         const originalPrice = (document.getElementById('swal-originalPrice') as HTMLInputElement).value;
+        const sizes = (document.getElementById('swal-sizes') as HTMLInputElement).value;
+        const imageFiles = (document.getElementById('swal-images') as HTMLInputElement).files;
+        const clearImages = (document.getElementById('swal-clear-images') as HTMLInputElement).checked;
+
+        if (!salePrice || !name) { Swal.showValidationMessage('Nombre y Precio son obligatorios'); return false; }
         
-        if (!salePrice) {
-          Swal.showValidationMessage('El precio de venta es obligatorio');
-          return false;
-        }
-        return {
-          salePrice: Number(salePrice),
-          originalPrice: originalPrice ? Number(originalPrice) : undefined
-        };
+        return { name, desc, salePrice, originalPrice, sizes, imageFiles, clearImages, catId };
       }
     });
 
     if (formValues) {
       try {
-        let catId = 1;
-        switch(product.categoryName) {
-          case 'Parrillas': catId = 1; break;
-          case 'Chulengos': catId = 2; break;
-          case 'Accesorios': catId = 3; break;
-          case 'Fogoneros': catId = 4; break;
-          case 'Muebles de exterior sostenibles': catId = 5; break;
+        const formData = new FormData();
+        formData.append('categoryId', formValues.catId.toString());
+        formData.append('sku', product.sku);
+        formData.append('name', formValues.name);
+        formData.append('description', formValues.desc);
+        formData.append('salePrice', formValues.salePrice);
+        if (formValues.originalPrice) formData.append('originalPrice', formValues.originalPrice);
+        if (formValues.sizes) {
+          formValues.sizes.split(',').forEach((s: string) => formData.append('sizes', s.trim()));
         }
+        if (formValues.imageFiles) {
+          for (let i = 0; i < formValues.imageFiles.length; i++) formData.append('images', formValues.imageFiles[i]);
+        }
+        formData.append('clearImages', formValues.clearImages.toString());
 
-        await adminService.updateProduct(product.id, { 
-          categoryId: catId, 
-          sku: product.sku, 
-          name: product.name, 
-          description: product.description,
-          salePrice: formValues.salePrice,
-          originalPrice: formValues.originalPrice
-        });
-        
-        Swal.fire({ icon: 'success', title: 'Precios Actualizados', timer: 1500, showConfirmButton: false });
+        await adminService.updateProduct(product.id, formData);
+        Swal.fire({ icon: 'success', title: 'Actualizado', timer: 1500, showConfirmButton: false });
         loadProducts();
-      } catch (error) { 
-        handleApiError(error); 
-      }
+      } catch (error) { handleApiError(error); }
     }
   };
 
@@ -371,7 +384,7 @@ export default function AdminPage() {
                         </td>
                         <td className="p-2 md:p-3 border-b border-brand-border">
                           <div className="flex gap-1 md:gap-2">
-                            <button onClick={() => handleEditPrice(p)} className="px-2 md:px-3 py-1 md:py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded text-[10px] md:text-xs font-bold transition-colors">Editar</button>
+                            <button onClick={() => handleEditProduct(p)} className="px-2 md:px-3 py-1 md:py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white rounded text-[10px] md:text-xs font-bold transition-colors">Editar</button>
                             <button onClick={() => handleDeleteProduct(p)} className="px-2 md:px-3 py-1 md:py-1.5 bg-red-100 text-red-700 hover:bg-red-600 hover:text-white rounded text-[10px] md:text-xs font-bold transition-colors">Baja</button>
                           </div>
                         </td>
@@ -454,6 +467,7 @@ export default function AdminPage() {
                           <td className="p-2 md:p-3 border-b border-brand-border">
                             <div className="flex gap-1 md:gap-2 flex-wrap">
                               <button onClick={() => handleViewDetails(order.orderCode)} className="px-2 md:px-3 py-1 md:py-1.5 bg-gray-200 text-gray-700 hover:bg-gray-700 hover:text-white rounded text-[9px] md:text-xs font-bold transition-colors">Ver</button>
+                              <button onClick={() => handleDeleteOrder(order.orderCode)} className="px-2 md:px-3 py-1 md:py-1.5 bg-gray-200 text-gray-700 hover:bg-red-600 hover:text-white rounded text-[9px] md:text-xs font-bold transition-colors">Borrar</button>
                               {order.status === 'PENDING' && (
                                 <>
                                   <button onClick={() => handleConfirmOrder(order.orderCode)} className="px-2 md:px-3 py-1 md:py-1.5 bg-green-100 text-green-700 hover:bg-green-600 hover:text-white rounded text-[9px] md:text-xs font-bold transition-colors">Cobro</button>

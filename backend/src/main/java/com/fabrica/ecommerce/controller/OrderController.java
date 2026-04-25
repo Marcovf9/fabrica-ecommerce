@@ -46,6 +46,12 @@ public class OrderController {
         return ResponseEntity.ok(cancelledOrder);
     }
 
+    @DeleteMapping("/{orderCode}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable String orderCode) {
+        orderService.deleteOrder(orderCode);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<List<Order>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());

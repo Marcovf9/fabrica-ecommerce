@@ -56,8 +56,11 @@ export const adminService = {
         });
         return response.data;
     },
-    updateProduct: async (id: number, productData: { categoryId: number, sku: string, name: string, description: string, salePrice: number, originalPrice?: number }) => {
-        const response = await apiClient.put(`/products/${id}`, productData);
+    updateProduct: async (id: number, formData: FormData) => {
+        const token = localStorage.getItem('admin_token');
+        const response = await axios.put(`${apiClient.defaults.baseURL}/products/${id}`, formData, {
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        });
         return response.data;
     },
     registerBatch: async (batchData: { productId: number, size: string, quantityProduced: number, totalBatchCost: number }) => {
@@ -82,6 +85,10 @@ export const adminService = {
     },
     cancelOrder: async (orderCode: string) => {
         const response = await apiClient.post(`/orders/${orderCode}/cancel`);
+        return response.data;
+    },
+    deleteOrder: async (orderCode: string) => {
+        const response = await apiClient.delete(`/orders/${orderCode}`);
         return response.data;
     },
     getOrderDetails: async (orderCode: string) => {

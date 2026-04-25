@@ -45,13 +45,28 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequestDTO request) {
-        Product p = productService.updateProduct(id, request);
+    public ResponseEntity<ProductResponseDTO> updateProduct(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String sku,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) BigDecimal salePrice,
+            @RequestParam(required = false) BigDecimal originalPrice,
+            @RequestParam(required = false) List<String> sizes,
+            @RequestParam(required = false) MultipartFile[] images,
+            @RequestParam(required = false) Boolean clearImages) {
+            
+        Product p = productService.updateProduct(id, categoryId, sku, name, description, salePrice, originalPrice, sizes, images, clearImages);
         
-        List<String> imageUrls = p.getImages().stream().map(com.fabrica.ecommerce.model.ProductImage::getImageUrl).collect(Collectors.toList());
-
-        List<SizeStockDTO> sizeStockDTOs = p.getSizes().stream().map(size -> new SizeStockDTO(size, 0L)).collect(Collectors.toList());
-
+        List<String> imageUrls = p.getImages().stream()
+                .map(com.fabrica.ecommerce.model.ProductImage::getImageUrl)
+                .toList();
+                
+        List<com.fabrica.ecommerce.dto.product.SizeStockDTO> sizeStockList = p.getSizes().stream()
+                .map(size -> new com.fabrica.ecommerce.dto.product.SizeStockDTO(size, 0L))
+                .toList();
+        
         return ResponseEntity.ok(new ProductResponseDTO(
                 p.getId(), 
                 p.getSku(), 
@@ -60,7 +75,7 @@ public class ProductController {
                 p.getSalePrice(), 
                 p.getCategory().getName(), 
                 imageUrls, 
-                sizeStockDTOs, 
+                sizeStockList, 
                 p.getOriginalPrice(),
                 p.isFeatured()
         ));
