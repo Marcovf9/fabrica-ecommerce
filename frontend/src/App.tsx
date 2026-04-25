@@ -13,7 +13,6 @@ import TermsPage from './pages/TermsPage';
 import { Menu, X, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
 
-// Componentes para las respuestas de Mercado Pago
 const PagoExitoso = () => {
   useEffect(() => { 
     localStorage.removeItem('fabrica_cart'); 
@@ -65,10 +64,9 @@ function App() {
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            {/* NAVEGACIÓN DESKTOP CON MENÚ DE CONTACTO RESTAURADO */}
             <nav className="hidden md:flex gap-6 items-center">
-              <Link to="/como-comprar" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Cómo Comprar</Link>
-              <Link to="/productos" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Catálogo</Link>
+              <Link to="/" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Inicio</Link>
+              <Link to="/productos" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Productos</Link>
               <Link to="/tracking" className="text-sm font-bold uppercase tracking-widest text-brand-muted hover:text-brand-primary transition-colors">Seguir Pedido</Link>
               
               <div className="relative group py-4">
@@ -90,12 +88,11 @@ function App() {
             </nav>
           </div>
 
-          {/* MENÚ MÓVIL CON CONTACTO RÁPIDO RESTAURADO */}
           {isMenuOpen && (
             <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-brand-border shadow-lg flex flex-col py-4 px-4 gap-4 animate-fade-in z-40">
-              <Link to="/como-comprar" onClick={closeMenu} className="p-4 bg-orange-50 rounded-lg text-brand-primary font-bold uppercase tracking-widest flex justify-between items-center border border-orange-200">1. ¿Cómo comprar? <span className="text-brand-primary">→</span></Link>
-              <Link to="/productos" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">2. Ver Catálogo <span className="text-brand-primary">→</span></Link>
-              <Link to="/tracking" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">3. Seguir mi Pedido <span className="text-brand-primary">→</span></Link>
+              <Link to="/" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Inicio <span className="text-brand-primary">→</span></Link>
+              <Link to="/productos" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Productos <span className="text-brand-primary">→</span></Link>
+              <Link to="/tracking" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Seguir mi Pedido <span className="text-brand-primary">→</span></Link>
               
               <div className="p-4 bg-brand-gray rounded-lg border border-brand-border flex flex-col gap-3 mt-2">
                 <span className="text-brand-dark font-bold uppercase tracking-widest text-xs mb-1 text-center">Contacto Rápido</span>

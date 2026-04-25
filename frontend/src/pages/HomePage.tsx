@@ -64,11 +64,12 @@ export default function HomePage() {
           className="w-full h-auto block opacity-100" 
         />
         
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto md:mt-16">
+        {/* Contenedor ajustado para mandar el botón al pie de la foto */}
+        <div className="absolute inset-0 flex items-end justify-center pointer-events-none pb-[6%] md:pb-[8%]">
+          <div className="pointer-events-auto">
             <Link 
               to="/productos" 
-              className="inline-block bg-brand-primary text-white px-4 md:px-12 py-1.5 md:py-4 rounded-sm text-[8px] md:text-base font-bold uppercase tracking-widest hover:bg-orange-600 transition-all duration-300 shadow-[0_4px_20px_rgba(214,112,38,0.4)] hover:scale-105"
+              className="inline-block bg-brand-primary text-white px-6 md:px-12 py-2 md:py-4 rounded-sm text-[10px] md:text-base font-bold uppercase tracking-widest hover:bg-orange-600 transition-all duration-300 shadow-[0_4px_20px_rgba(214,112,38,0.4)] hover:scale-105"
             >
               Ver Productos
             </Link>
@@ -137,7 +138,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 4. BANNER DE INSTAGRAM (Sin línea naranja, con un tono apenas diferente) */}
+      {/* 4. BANNER DE INSTAGRAM */}
       <div id="contacto" className="w-full bg-[#111111] py-16 md:py-24 text-center border-t border-white/5">
         <p className="text-brand-muted text-xs md:text-sm font-bold tracking-[0.3em] uppercase mb-6">
           Formá parte de la comunidad

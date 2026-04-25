@@ -5,7 +5,7 @@ import type { Product, CartItem } from '../types';
 import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Camera, ShoppingCart, Tag, Box, Ruler, Truck, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
+import { ArrowLeft, Camera, ShoppingCart, Tag, Box, Ruler, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ProductDetailPage() {
   const { sku } = useParams();
@@ -63,6 +63,8 @@ export default function ProductDetailPage() {
   if (!product) return null;
 
   const transferPrice = product.salePrice * 0.85;
+  const installmentPrice = product.salePrice / 3;
+  const discountPercentage = product.originalPrice ? Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100) : 0;
 
   return (
     <>
@@ -104,28 +106,21 @@ export default function ProductDetailPage() {
           <div className="flex-1 p-5 md:p-8 lg:p-12 flex flex-col justify-center">
             <h1 className="text-2xl md:text-4xl lg:text-5xl text-brand-dark font-light uppercase tracking-widest mb-2 md:mb-4">{product.name}</h1>
             
-            <div className="mb-6 md:mb-8 border-b border-brand-border pb-6">
+            {/* BLOQUE DE PRECIOS */}
+            <div className="flex flex-col gap-1 mb-8 border-b border-brand-border pb-6">
               {product.originalPrice && product.originalPrice > product.salePrice && (
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm md:text-base text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
-                  <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">{Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF</span>
-                </div>
+                <span className="text-sm md:text-base text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
               )}
-              
-              <div className="flex flex-col md:flex-row md:items-center gap-2 mb-3">
-                <p className={`text-3xl md:text-4xl font-black leading-tight ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
-                  ${product.salePrice.toLocaleString('es-AR')}
-                </p>
-                {/* INSIGNIA 3 CUOTAS MP */}
-                <span className="bg-[#00A650] text-white text-[10px] md:text-xs font-black uppercase tracking-wider px-2 py-1 rounded shadow-sm w-max flex items-center gap-1"><CreditCard size={12}/> 3 Cuotas sin interés</span>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl md:text-4xl font-black text-brand-dark">${product.salePrice.toLocaleString('es-AR')}</span>
+                {product.originalPrice && product.originalPrice > product.salePrice && (
+                  <span className="text-base md:text-lg font-bold text-brand-primary">{discountPercentage}% OFF</span>
+                )}
               </div>
-
-              <p className="text-xl md:text-2xl font-black text-brand-primary mt-2 flex items-center gap-2">
-                ${transferPrice.toLocaleString('es-AR')} <span className="text-[10px] md:text-xs font-bold bg-orange-100 text-brand-primary px-2 py-1 rounded uppercase tracking-wider">Por Transferencia (-15%)</span>
-              </p>
+              <span className="text-sm md:text-base text-brand-dark font-medium mb-1">3 x ${installmentPrice.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} sin interés</span>
+              <span className="text-base md:text-xl font-black text-brand-primary mt-1">${transferPrice.toLocaleString('es-AR')} con TRANSFERENCIA</span>
             </div>
             
-            {/* ... (Todo el resto del componente queda exactamente igual: description, sizes, add to cart button) ... */}
             <div className="bg-brand-gray p-4 md:p-6 rounded-lg mb-6 md:mb-8 border border-brand-border">
               <p className="text-brand-dark whitespace-pre-wrap leading-relaxed text-sm md:text-base">{product.description || "Sin especificaciones técnicas registradas."}</p>
             </div>

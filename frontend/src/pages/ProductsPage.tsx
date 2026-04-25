@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Building2, Truck } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Truck, Landmark } from 'lucide-react';
 
 export default function ProductsPage() {
   const location = useLocation();
@@ -72,6 +72,25 @@ export default function ProductsPage() {
 
   const removeFromCart = (productId: number, size: string) => {
     setCart(prev => prev.filter(item => !(item.product.id === productId && item.size === size)));
+  };
+
+  const quickAddToCart = (product: Product, sizeName: string) => {
+    const currentSizeData = product.sizes?.find(s => s.size === sizeName);
+    const availableStock = currentSizeData ? currentSizeData.stock : 0;
+    if (availableStock <= 0) return;
+
+    setCart((prev) => {
+      const existing = prev.find(item => item.product.id === product.id && item.size === sizeName);
+      if (existing) {
+        if (existing.quantity >= availableStock) {
+          Swal.fire({ icon: 'warning', title: 'Límite de stock', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false });
+          return prev;
+        }
+        return prev.map(item => (item.product.id === product.id && item.size === sizeName) ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { product, quantity: 1, size: sizeName }];
+    });
+    Swal.fire({ icon: 'success', title: 'Agregado al pedido', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
   };
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +209,6 @@ export default function ProductsPage() {
 
       <div className="max-w-[1600px] w-[95%] mx-auto py-8 flex flex-col lg:flex-row gap-4 md:gap-8 min-h-screen">
         
-        {/* LADO IZQUIERDO: PRODUCTOS */}
         <div className="flex-1">
 
           <div className="relative mb-8 max-w-md">
@@ -208,6 +226,8 @@ export default function ProductsPage() {
                   {filteredProducts.filter(p => p.categoryName === category).map((product) => {
                     const totalStock = product.sizes ? product.sizes.reduce((acc, s) => acc + (s.stock || 0), 0) : 0;
                     const transferPrice = product.salePrice * 0.85; 
+                    const installmentPrice = product.salePrice / 3;
+                    const discountPercentage = product.originalPrice ? Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100) : 0;
                     
                     return (
                       <div key={product.id} className="bg-white border border-brand-border rounded-lg md:rounded-xl overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300 relative">
@@ -217,28 +237,54 @@ export default function ProductsPage() {
                         </Link>
                         <div className="p-4 md:p-6 flex flex-col flex-1">
                           <Link to={`/producto/${product.sku}`} className="hover:text-brand-primary transition-colors"><h3 className="text-sm md:text-lg font-bold text-brand-dark mb-1 line-clamp-2">{product.name}</h3></Link>
-                          <div className="mt-auto pt-4 relative">
-                            {product.originalPrice && product.originalPrice > product.salePrice && (
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs md:text-sm text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
-                                <span className="text-[10px] md:text-xs font-black text-red-500 bg-red-100 px-2 py-0.5 rounded uppercase tracking-wider">{Math.round(((product.originalPrice - product.salePrice) / product.originalPrice) * 100)}% OFF</span>
-                              </div>
-                            )}
+                          <div className="mt-auto pt-4 flex flex-col h-full justify-end">
                             
-                            <div className="mb-4">
-                              <p className={`text-base md:text-xl font-black leading-tight flex flex-col xl:flex-row xl:items-center gap-1 ${product.originalPrice && product.originalPrice > product.salePrice ? 'text-red-600' : 'text-brand-dark'}`}>
-                                ${product.salePrice.toLocaleString('es-AR')} 
-                                {/* INSIGNIA 3 CUOTAS MP EN GRILLA */}
-                                <span className="bg-[#00A650] text-white text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm w-max">3 Cuotas S/Interés</span>
-                              </p>
-                              <p className="text-sm md:text-lg font-black text-brand-primary mt-2 flex items-center gap-1 md:gap-2">
-                                ${transferPrice.toLocaleString('es-AR')} <span className="text-[9px] font-bold bg-orange-100 text-brand-primary px-1.5 py-0.5 rounded uppercase tracking-wider">Transf. (-15%)</span>
-                              </p>
+                            {/* NUEVO FORMATO DE PRECIOS EXACTO A LA FOTO */}
+                            <div className="flex flex-col gap-0.5 mb-4">
+                              {product.originalPrice && product.originalPrice > product.salePrice && (
+                                <span className="text-sm text-brand-muted line-through font-medium">${product.originalPrice.toLocaleString('es-AR')}</span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl md:text-3xl font-black text-brand-dark">${product.salePrice.toLocaleString('es-AR')}</span>
+                                {product.originalPrice && product.originalPrice > product.salePrice && (
+                                  <span className="text-sm md:text-base font-bold text-brand-primary">{discountPercentage}% OFF</span>
+                                )}
+                              </div>
+                              <span className="text-xs md:text-sm text-brand-dark font-medium mb-1">3 x ${installmentPrice.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} sin interés</span>
+                              <span className="text-sm md:text-base font-black text-brand-primary">${transferPrice.toLocaleString('es-AR')} con TRANSFERENCIA</span>
                             </div>
 
-                            <Link to={`/producto/${product.sku}`} className={`w-full py-2 md:py-3 px-4 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 ${totalStock > 0 ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-md' : 'bg-brand-gray text-brand-muted cursor-not-allowed pointer-events-none'}`}>
-                              <Eye size={16} /> {totalStock > 0 ? 'Ver Detalles' : 'Agotado'}
-                            </Link>
+                            {/* BOTONERA Y QUICK SELECT */}
+                            <div className="flex gap-2 h-10 md:h-12 mt-auto">
+                              <Link to={`/producto/${product.sku}`} className="flex-1 text-xs md:text-sm font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-2 bg-brand-dark hover:bg-brand-primary text-white shadow-md">
+                                <Eye size={16} /> Detalles
+                              </Link>
+                              
+                              {totalStock > 0 && (
+                                <div className="relative group flex">
+                                  <button className="h-full px-3 md:px-4 bg-white border border-brand-border rounded text-brand-dark group-hover:bg-brand-primary group-hover:border-brand-primary group-hover:text-white transition-colors flex items-center justify-center shadow-sm">
+                                    <ShoppingCart size={18} />
+                                  </button>
+                                  
+                                  <div className="absolute bottom-[calc(100%+5px)] right-0 w-48 bg-white border border-brand-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 flex flex-col overflow-hidden pb-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-center py-2 bg-brand-gray text-brand-muted border-b border-brand-border mb-1">Agregar al carrito</span>
+                                    {product.sizes?.map(s => (
+                                      <button 
+                                        key={s.size} 
+                                        disabled={s.stock <= 0} 
+                                        onClick={(e) => { e.preventDefault(); quickAddToCart(product, s.size); }} 
+                                        className="px-4 py-2 text-xs font-bold text-brand-dark hover:bg-brand-gray disabled:opacity-50 disabled:text-gray-400 transition-colors text-left flex justify-between items-center"
+                                      >
+                                        <span>{s.size}</span>
+                                        {s.stock > 0 ? <Plus size={14} className="text-brand-primary"/> : <span className="text-[9px] uppercase">Agotado</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="absolute bottom-full right-0 w-full h-[10px] bg-transparent z-40"></div>
+                                </div>
+                              )}
+                            </div>
+
                           </div>
                         </div>
                       </div>
@@ -249,8 +295,7 @@ export default function ProductsPage() {
             ))
           )}
 
-          {/* BANNER MAYORISTA (ÚNICO Y AL FINAL DE TODO) */}
-          <div className="bg-brand-dark rounded-xl p-6 mt-12 mb-8 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
+          <div className="bg-brand-dark rounded-xl p-6 mt-12 flex flex-col md:flex-row items-center justify-between border-l-4 border-brand-primary shadow-lg">
             <div className="text-left mb-4 md:mb-0">
               <h3 className="text-base md:text-lg font-bold uppercase tracking-widest text-brand-primary mb-1">¿Equipás un emprendimiento gastronómico o complejo?</h3>
               <p className="text-xs md:text-sm text-brand-muted">Consultá precios directos de fábrica por volumen (exclusivo con CUIT).</p>
@@ -291,7 +336,7 @@ export default function ProductsPage() {
           )}
 
           <div className="space-y-4">
-            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Destino (Logística)</h4>
+            <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-4">Datos de Destino</h4>
             
             <div className="grid grid-cols-2 gap-3">
               <div><input type="text" name="firstName" placeholder="Nombre" value={customer.firstName} onChange={handleCustomerChange} className="w-full p-2 text-sm bg-brand-gray border border-brand-border rounded focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all" />{formErrors.firstName && <span className="text-red-500 text-[10px] mt-1 block">{formErrors.firstName}</span>}</div>
@@ -311,21 +356,29 @@ export default function ProductsPage() {
 
             <h4 className="text-brand-primary text-xs uppercase tracking-widest font-bold border-b border-brand-border pb-2 pt-6">Método de Pago</h4>
             <div className="flex flex-col gap-3 mb-4">
+              
               <label className={`border p-3 md:p-4 rounded-lg cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === 'TRANSFER' ? 'border-brand-primary bg-orange-50 shadow-md transform scale-[1.02]' : 'border-brand-border bg-white hover:bg-brand-gray'}`}>
-                <input type="radio" name="payment" value="TRANSFER" checked={paymentMethod === 'TRANSFER'} onChange={() => setPaymentMethod('TRANSFER')} className="accent-brand-primary w-4 h-4" />
+                <input type="radio" name="payment" value="TRANSFER" checked={paymentMethod === 'TRANSFER'} onChange={() => setPaymentMethod('TRANSFER')} className="accent-brand-primary w-4 h-4 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><Building2 size={16}/> Transferencia</p>
-                  <p className="text-xs text-brand-primary font-black mt-1">🔥 15% DE DESCUENTO</p>
+                  <p className="font-bold text-brand-dark text-sm flex items-center gap-2">
+                    <Landmark size={18} className="text-brand-dark" /> Transferencia Bancaria
+                  </p>
+                  <p className="text-xs text-brand-primary font-black mt-1 flex items-center gap-1">🔥 15% DE DESCUENTO</p>
                 </div>
               </label>
               
               <label className={`border p-3 md:p-4 rounded-lg cursor-pointer flex items-center gap-3 transition-all ${paymentMethod === 'MERCADO_PAGO' ? 'border-[#009EE3] bg-[#009EE3]/10 shadow-md transform scale-[1.02]' : 'border-brand-border bg-white hover:bg-brand-gray'}`}>
-                <input type="radio" name="payment" value="MERCADO_PAGO" checked={paymentMethod === 'MERCADO_PAGO'} onChange={() => setPaymentMethod('MERCADO_PAGO')} className="accent-[#009EE3] w-4 h-4" />
+                <input type="radio" name="payment" value="MERCADO_PAGO" checked={paymentMethod === 'MERCADO_PAGO'} onChange={() => setPaymentMethod('MERCADO_PAGO')} className="accent-[#009EE3] w-4 h-4 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="font-bold text-brand-dark text-sm flex items-center gap-2"><CreditCard size={16}/> Tarjetas / Mercado Pago</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CreditCard size={18} className="text-brand-dark" />
+                    <img src="https://http2.mlstatic.com/frontend-assets/ui-navigation/5.19.5/mercadopago/logo__small.png" alt="Mercado Pago" className="h-4 object-contain" />
+                  </div>
+                  <p className="font-bold text-brand-dark text-sm">Tarjetas de Crédito / Débito</p>
                   <p className="text-[10px] md:text-xs text-brand-muted mt-1 leading-tight">Hasta 3 Cuotas Sin Interés.</p>
                 </div>
               </label>
+
             </div>
 
             <div className="border-t border-brand-border pt-4 mb-6 bg-brand-gray/50 rounded-lg p-4">
