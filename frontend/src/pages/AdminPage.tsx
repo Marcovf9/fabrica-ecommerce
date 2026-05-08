@@ -135,14 +135,22 @@ export default function AdminPage() {
   };
 
   const handleEditProduct = async (product: Product) => {
-    let catId = 1;
-    switch(product.categoryName) { case 'Parrillas': catId = 1; break; case 'Chulengos': catId = 2; break; case 'Accesorios': catId = 3; break; case 'Fogoneros': catId = 4; break; case 'Muebles de exterior sostenibles': catId = 5; break; }
-
     const { value: formValues } = await Swal.fire({
       title: 'Editar Producto',
       width: '600px',
       html:
         `<div class="flex flex-col gap-4 text-left p-2">` +
+          `<div>` +
+            `<label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Categoría</label>` +
+            `<select id="swal-category" class="w-full p-2 border border-brand-border rounded bg-brand-gray text-sm outline-none focus:ring-2 focus:ring-brand-primary/20">` +
+              `<option value="1" ${product.categoryName === 'Parrillas' ? 'selected' : ''}>Parrillas</option>` +
+              `<option value="2" ${product.categoryName === 'Chulengos' ? 'selected' : ''}>Chulengos</option>` +
+              `<option value="3" ${product.categoryName === 'Accesorios' ? 'selected' : ''}>Accesorios</option>` +
+              `<option value="4" ${product.categoryName === 'Fogoneros' ? 'selected' : ''}>Fogoneros</option>` +
+              `<option value="5" ${product.categoryName === 'Muebles de exterior sostenibles' ? 'selected' : ''}>Muebles de exterior sostenibles</option>` +
+            `</select>` +
+          `</div>` +
+          /* ------------------------------------------- */
           `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Nombre</label><input id="swal-name" class="swal2-input !m-0 !w-full !text-sm" type="text" value="${product.name}"></div>` +
           `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Descripción</label><textarea id="swal-desc" class="swal2-textarea !m-0 !w-full !text-sm">${product.description}</textarea></div>` +
           `<div class="flex gap-2">` +
@@ -161,6 +169,7 @@ export default function AdminPage() {
       confirmButtonText: 'Guardar Cambios',
       confirmButtonColor: '#D67026',
       preConfirm: () => {
+        const catId = (document.getElementById('swal-category') as HTMLSelectElement).value;
         const name = (document.getElementById('swal-name') as HTMLInputElement).value;
         const desc = (document.getElementById('swal-desc') as HTMLTextAreaElement).value;
         const salePrice = (document.getElementById('swal-salePrice') as HTMLInputElement).value;
@@ -171,7 +180,7 @@ export default function AdminPage() {
 
         if (!salePrice || !name) { Swal.showValidationMessage('Nombre y Precio son obligatorios'); return false; }
         
-        return { name, desc, salePrice, originalPrice, sizes, imageFiles, clearImages, catId };
+        return { name, desc, salePrice, originalPrice, sizes, imageFiles, clearImages, catId: Number(catId) };
       }
     });
 
