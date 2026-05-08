@@ -185,7 +185,6 @@ export default function ProductsPage() {
     { name: 'Muebles de exterior sostenibles', image: 'https://res.cloudinary.com/dq5bau3ky/image/upload/v1776970228/Muebles_de_exterior_1_p45uhn.png' }
   ];
   
-  // FILTRO INTELIGENTE CORREGIDO
   const filteredProducts = products.filter(p => {
     const searchLower = searchTerm.toLowerCase().trim();
     const matchesSearch = !searchLower || p.name.toLowerCase().includes(searchLower) || p.sku.toLowerCase().includes(searchLower);
@@ -197,15 +196,7 @@ export default function ProductsPage() {
     const prodCat = normalize(p.categoryName);
     const selCat = normalize(selectedCategory);
     
-    let matchesCategory = false;
-    if (selCat.includes('parri') && prodCat.includes('parri')) matchesCategory = true;
-    else if (selCat.includes('chule') && prodCat.includes('chule')) matchesCategory = true;
-    else if (selCat.includes('acces') && prodCat.includes('acces')) matchesCategory = true;
-    else if (selCat.includes('fogon') && prodCat.includes('fogon')) matchesCategory = true;
-    else if (selCat.includes('muebl') && prodCat.includes('muebl')) matchesCategory = true;
-    else if (prodCat.includes(selCat) || selCat.includes(prodCat)) matchesCategory = true;
-                            
-    return matchesSearch && matchesCategory;
+    return matchesSearch && prodCat === selCat;
   });
   
   const displayCategories = selectedCategory === 'Todas' 
