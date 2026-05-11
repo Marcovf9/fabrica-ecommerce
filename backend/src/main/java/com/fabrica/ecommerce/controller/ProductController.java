@@ -3,6 +3,7 @@ package com.fabrica.ecommerce.controller;
 import com.fabrica.ecommerce.dto.product.ProductRequestDTO;
 import com.fabrica.ecommerce.dto.product.ProductResponseDTO;
 import com.fabrica.ecommerce.dto.product.SizeStockDTO;
+import com.fabrica.ecommerce.model.Category;
 import com.fabrica.ecommerce.model.Product;
 import com.fabrica.ecommerce.service.ProductService;
 import jakarta.validation.Valid;
@@ -27,6 +28,11 @@ public class ProductController {
     @GetMapping("/catalog")
     public ResponseEntity<List<ProductResponseDTO>> getCatalog() {
         return ResponseEntity.ok(productService.getActiveCatalog());
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<Category>> getCategories() {
+        return ResponseEntity.ok(productService.getAllCategories());
     }
 
     @PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)

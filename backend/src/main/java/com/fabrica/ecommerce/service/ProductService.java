@@ -28,6 +28,11 @@ public class ProductService {
     private final InventoryBatchRepository inventoryBatchRepository;
 
     @Transactional(readOnly = true)
+    public List<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
     public List<ProductResponseDTO> getActiveCatalog() {
         List<Product> activeProducts = productRepository.findAll().stream().filter(Product::getIsActive).toList();
 

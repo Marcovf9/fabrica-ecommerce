@@ -11,12 +11,14 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   
   const [products, setProducts] = useState<Product[]>([]);
+  
+  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
   const [report, setReport] = useState<ProfitabilityReport[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetail | null>(null);
 
-  const [newProduct, setNewProduct] = useState({ categoryId: 1, name: '', description: '', salePrice: '', originalPrice: '', sizes: '', isFeatured: false });
+  const [newProduct, setNewProduct] = useState({ categoryId: 0, name: '', description: '', salePrice: '', originalPrice: '', sizes: '', isFeatured: false });
   const [imageFiles, setImageFiles] = useState<FileList | null>(null);
   const [newBatch, setNewBatch] = useState({ productId: 0, size: '', quantityProduced: '', totalBatchCost: '' });
 
@@ -36,11 +38,20 @@ export default function AdminPage() {
     if (result.isConfirmed) { try { await adminService.deleteAbandonedCart(id); Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false }); loadAbandonedCarts(); } catch (error) { handleApiError(error); } }
   };
 
-  useEffect(() => { if (isAuthenticated) { loadProducts(); loadReport(); loadOrders(); loadAbandonedCarts(); } }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) { loadCategories(); loadProducts(); loadReport(); loadOrders(); loadAbandonedCarts(); } }, [isAuthenticated]);
 
   const handleApiError = (error: any, defaultMessage: string = 'Ocurrió un error') => {
     if (error.response && (error.response.status === 401 || error.response.status === 403)) { handleLogout(); Swal.fire({ icon: 'error', title: 'Sesión expirada' }); } 
     else { Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || defaultMessage }); }
+  };
+
+  
+  const loadCategories = async () => {
+    try {
+      const data = await catalogService.getCategories();
+      setCategories(data);
+      if (data.length > 0) setNewProduct(prev => ({ ...prev, categoryId: data[0].id }));
+    } catch (error) { }
   };
 
   const loadProducts = async () => { try { const data = await catalogService.getCatalog(); setProducts(data); if (data.length > 0) setNewBatch(prev => ({ ...prev, productId: data[0].id })); } catch (error) { } };
@@ -79,7 +90,7 @@ export default function AdminPage() {
     try { 
       await adminService.createProduct(formData); 
       Swal.fire({ icon: 'success', title: '¡Agregado!', html: `SKU: <b>${generatedSku}</b>` }); 
-      setNewProduct({ categoryId: 1, name: '', description: '', salePrice: '', originalPrice: '', sizes: '' , isFeatured: false}); 
+      setNewProduct(prev => ({ ...prev, name: '', description: '', salePrice: '', originalPrice: '', sizes: '' , isFeatured: false})); 
       setImageFiles(null); 
       const fileInput = document.getElementById('file-upload') as HTMLInputElement; 
       if (fileInput) fileInput.value = ''; 
@@ -135,6 +146,9 @@ export default function AdminPage() {
   };
 
   const handleEditProduct = async (product: Product) => {
+
+    const categoryOptions = categories.map(c => `<option value="${c.id}" ${product.categoryName === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
+
     const { value: formValues } = await Swal.fire({
       title: 'Editar Producto',
       width: '600px',
@@ -143,14 +157,9 @@ export default function AdminPage() {
           `<div>` +
             `<label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Categoría</label>` +
             `<select id="swal-category" class="w-full p-2 border border-brand-border rounded bg-brand-gray text-sm outline-none focus:ring-2 focus:ring-brand-primary/20">` +
-              `<option value="1" ${product.categoryName === 'Parrillas' ? 'selected' : ''}>Parrillas</option>` +
-              `<option value="2" ${product.categoryName === 'Chulengos' ? 'selected' : ''}>Chulengos</option>` +
-              `<option value="3" ${product.categoryName === 'Accesorios' ? 'selected' : ''}>Accesorios</option>` +
-              `<option value="4" ${product.categoryName === 'Fogoneros' ? 'selected' : ''}>Fogoneros</option>` +
-              `<option value="5" ${product.categoryName === 'Muebles de exterior sostenibles' ? 'selected' : ''}>Muebles de exterior sostenibles</option>` +
+              categoryOptions +
             `</select>` +
           `</div>` +
-          /* ------------------------------------------- */
           `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Nombre</label><input id="swal-name" class="swal2-input !m-0 !w-full !text-sm" type="text" value="${product.name}"></div>` +
           `<div><label class="text-[10px] font-bold uppercase text-brand-muted mb-1 block">Descripción</label><textarea id="swal-desc" class="swal2-textarea !m-0 !w-full !text-sm">${product.description}</textarea></div>` +
           `<div class="flex gap-2">` +
@@ -296,13 +305,10 @@ export default function AdminPage() {
             <h3 className="text-brand-primary font-bold text-sm md:text-base uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2"><Tag size={16}/> Nuevo Producto</h3>
             <form onSubmit={handleCreateProduct}>
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Categoría</label>
-<select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none">
-  <option value={1}>Parrillas</option>
-  <option value={2}>Chulengos</option>
-  <option value={3}>Accesorios</option>
-  <option value={4}>Fogoneros</option>
-  <option value={5}>Muebles de exterior sostenibles</option>
-</select>
+              {/* NUEVO: Selector de categoría dinámico en la creación de producto */}
+              <select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none">
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Nombre</label>
               <input required type="text" placeholder="Ej: Fogonero XL" value={newProduct.name} onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none" />
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Descripción</label>
@@ -324,11 +330,11 @@ export default function AdminPage() {
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Fotografías</label>
               <input id="file-upload" type="file" accept="image/*" multiple onChange={(e) => setImageFiles(e.target.files)} className="w-full p-1.5 md:p-2 mb-4 md:mb-6 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark" />
               <div className="mb-6 p-3 border border-brand-primary/30 bg-orange-50 rounded-lg">
-  <label className="flex items-center gap-3 cursor-pointer">
-    <input type="checkbox" checked={newProduct.isFeatured} onChange={(e) => setNewProduct({...newProduct, isFeatured: e.target.checked})} className="w-5 h-5 text-brand-primary accent-brand-primary cursor-pointer" />
-    <span className="text-xs md:text-sm font-bold uppercase text-brand-dark tracking-wider">🌟 Mostrar en sección de Destacados</span>
-  </label>
-</div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={newProduct.isFeatured} onChange={(e) => setNewProduct({...newProduct, isFeatured: e.target.checked})} className="w-5 h-5 text-brand-primary accent-brand-primary cursor-pointer" />
+                  <span className="text-xs md:text-sm font-bold uppercase text-brand-dark tracking-wider">🌟 Mostrar en sección de Destacados</span>
+                </label>
+              </div>
               <button type="submit" className="w-full py-2 md:py-3 text-xs md:text-sm bg-brand-primary hover:bg-orange-600 text-white font-bold uppercase rounded-lg transition-colors tracking-wider">Crear Producto</button>
             </form>
           </div>

@@ -28,10 +28,14 @@ export const authService = {
 };
 
 export const catalogService = {
-    getCatalog: async () => {
+  getCatalog: async () => {
         const response = await apiClient.get<Product[]>('/products/catalog');
         return response.data;
-    }
+  },
+  getCategories: async () => {
+        const response = await apiClient.get('/products/categories');
+        return response.data;
+  }
 };
 
 export const orderService = {
