@@ -44,7 +44,7 @@ public class ProductController {
         return new ResponseEntity<>(productService.createProduct(categoryId, sku, name, description, salePrice, originalPrice, sizes, images, isFeatured), HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}")
+    @PostMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> updateProduct(
             @PathVariable Long id,
             @RequestParam(required = false) Long categoryId,

@@ -58,7 +58,7 @@ export const adminService = {
     },
     updateProduct: async (id: number, formData: FormData) => {
         const token = localStorage.getItem('admin_token');
-        const response = await axios.put(`${apiClient.defaults.baseURL}/products/${id}`, formData, {
+        const response = await axios.post(`${apiClient.defaults.baseURL}/products/${id}`, formData, {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
         });
         return response.data;

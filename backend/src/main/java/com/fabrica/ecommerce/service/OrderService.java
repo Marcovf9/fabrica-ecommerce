@@ -263,8 +263,22 @@ public class OrderService {
 
     @Transactional
     public void deleteOrder(String orderCode) {
-        Order order = orderRepository.findByOrderCode(orderCode).orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado: " + orderCode));
+        Order order = orderRepository.findByOrderCode(orderCode)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido no encontrado: " + orderCode));
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        
+        for (OrderItem item : items) {
+            List<OrderItemBatchAllocation> allocations = allocationRepository.findByOrderItemId(item.getId());
+            if (allocations != null && !allocations.isEmpty()) {
+                for (OrderItemBatchAllocation alloc : allocations) {
+                    InventoryBatch batch = alloc.getInventoryBatch();
+                    batch.setQuantityRemaining(batch.getQuantityRemaining() + alloc.getQuantityAllocated());
+                    inventoryBatchRepository.save(batch);
+                }
+                allocationRepository.deleteAll(allocations);
+            }
+        }
+        
         orderItemRepository.deleteAll(items);
         orderRepository.delete(order);
     }
