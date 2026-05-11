@@ -11,7 +11,6 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   
   const [products, setProducts] = useState<Product[]>([]);
-  
   const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
   const [report, setReport] = useState<ProfitabilityReport[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -45,7 +44,6 @@ export default function AdminPage() {
     else { Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || defaultMessage }); }
   };
 
-  
   const loadCategories = async () => {
     try {
       const data = await catalogService.getCategories();
@@ -146,7 +144,6 @@ export default function AdminPage() {
   };
 
   const handleEditProduct = async (product: Product) => {
-
     const categoryOptions = categories.map(c => `<option value="${c.id}" ${product.categoryName === c.name ? 'selected' : ''}>${c.name}</option>`).join('');
 
     const { value: formValues } = await Swal.fire({
@@ -305,7 +302,6 @@ export default function AdminPage() {
             <h3 className="text-brand-primary font-bold text-sm md:text-base uppercase tracking-wider mb-3 md:mb-4 flex items-center gap-2"><Tag size={16}/> Nuevo Producto</h3>
             <form onSubmit={handleCreateProduct}>
               <label className="block text-[10px] md:text-xs uppercase font-bold text-brand-muted mb-1 md:mb-2">Categoría</label>
-              {/* NUEVO: Selector de categoría dinámico en la creación de producto */}
               <select value={newProduct.categoryId} onChange={(e) => setNewProduct({...newProduct, categoryId: Number(e.target.value)})} className="w-full p-2 md:p-3 mb-3 md:mb-4 text-xs md:text-sm bg-brand-gray border border-brand-border rounded text-brand-dark outline-none">
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
