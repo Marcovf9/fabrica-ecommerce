@@ -55,16 +55,13 @@ export default function HomePage() {
         </script>
 
 
-      {/* 1. SECCIÓN PORTADA (HERO) */}
+      {/* 1. SECCIÓN PORTADA (HERO) CORREGIDA */}
       <div className="relative w-full bg-brand-dark flex flex-col items-center justify-center">
-        
         <img 
           src="https://res.cloudinary.com/dq5bau3ky/image/upload/v1778277427/Portada_nbi01w.png" 
           alt="Ritual Espacios Portada" 
           className="w-full h-auto block opacity-100" 
         />
-        
-        {/* Contenedor ajustado para mandar el botón al pie de la foto */}
         <div className="absolute inset-0 flex items-end justify-center pointer-events-none pb-[6%] md:pb-[8%]">
           <div className="pointer-events-auto">
             <Link 
@@ -77,17 +74,16 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 2. TIRA DE CATEGORÍAS (NAVEGA A PRODUCTOS) */}
-      <div className="bg-white border-b border-brand-border py-8 shadow-sm">
+      {/* 2. TIRA DE CATEGORÍAS */}
+      <div className="bg-white border-b border-brand-border py-4 md:py-8 shadow-sm">
         <div className="max-w-[1600px] w-[95%] mx-auto flex gap-3 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth items-start justify-start lg:justify-center">
           {categoryFilters.map(cat => (
             <button 
               key={cat.name} 
-              // Al tocar, navegamos a /productos y le mandamos la categoría elegida
               onClick={() => navigate('/productos', { state: { category: cat.name } })}
-              className="flex flex-col items-center gap-2 group flex-shrink-0 w-[76px] md:w-[100px]"
+              className="flex flex-col items-center gap-1 md:gap-2 group flex-shrink-0 w-[64px] md:w-[100px]"
             >
-              <div className="w-16 h-16 md:w-24 md:h-24 rounded-full p-1 transition-all duration-300 border-2 border-transparent group-hover:border-brand-primary">
+              <div className="w-14 h-14 md:w-24 md:h-24 rounded-full p-1 transition-all duration-300 border-2 border-transparent group-hover:border-brand-primary">
                 <div className="w-full h-full rounded-full overflow-hidden shadow-inner bg-brand-dark flex items-center justify-center">
                   {cat.image ? (
                     <img src={cat.image} alt={cat.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -106,30 +102,30 @@ export default function HomePage() {
 
       {/* 3. PRODUCTOS DESTACADOS */}
       {featuredProducts.length > 0 && (
-        <section className="bg-brand-dark py-12 md:py-20 relative">
+        <section className="bg-brand-dark py-8 md:py-20 relative">
           <div className="max-w-[1600px] w-[95%] mx-auto">
-            <h2 className="text-center text-2xl md:text-4xl text-white font-light uppercase tracking-[0.2em] mb-2 drop-shadow-lg">
+            <h2 className="text-center text-xl md:text-4xl text-white font-light uppercase tracking-[0.2em] mb-1 md:mb-2 drop-shadow-lg">
               Colección <span className="font-bold text-brand-primary">Destacada</span>
             </h2>
-            <p className="text-center text-brand-gray text-xs md:text-sm uppercase tracking-widest mb-10 opacity-80">
+            <p className="text-center text-brand-gray text-[10px] md:text-sm uppercase tracking-widest mb-6 md:mb-10 opacity-80">
               Los favoritos de Ritual
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-8">
                {featuredProducts.slice(0, 4).map(product => (
                   <Link key={`feat-${product.id}`} to={`/producto/${product.sku}`} className="bg-white border border-brand-border rounded-lg overflow-hidden group hover:shadow-2xl hover:shadow-brand-primary/20 transition-all duration-300 transform hover:-translate-y-1">
-                    <div className="h-48 md:h-72 overflow-hidden relative bg-brand-gray">
+                    <div className="h-32 md:h-72 overflow-hidden relative bg-brand-gray">
                       {product.imageUrls && product.imageUrls.length > 0 ? (
                         <img src={optimizeCloudinaryUrl(product.imageUrls[0], 500)} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={32} /></div>
+                        <div className="w-full h-full flex items-center justify-center text-brand-muted"><PackageOpen size={24} className="md:w-8 md:h-8" /></div>
                       )}
-                      <div className="absolute top-3 right-3 bg-brand-dark text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest rounded-sm shadow-md">
+                      <div className="absolute top-2 right-2 bg-brand-dark text-white text-[8px] md:text-[10px] font-bold px-2 py-0.5 md:px-3 md:py-1 uppercase tracking-widest rounded-sm shadow-md">
                         🌟 Top Ventas
                       </div>
                     </div>
-                    <div className="p-4 md:p-6 text-center">
-                      <h3 className="text-sm md:text-base font-bold text-brand-dark mb-2 line-clamp-1">{product.name}</h3>
-                      <p className="text-lg md:text-xl font-black text-brand-primary">${product.salePrice.toLocaleString('es-AR')}</p>
+                    <div className="p-3 md:p-6 text-center">
+                      <h3 className="text-xs md:text-base font-bold text-brand-dark mb-1 md:mb-2 line-clamp-1">{product.name}</h3>
+                      <p className="text-sm md:text-xl font-black text-brand-primary">${product.salePrice.toLocaleString('es-AR')}</p>
                     </div>
                   </Link>
                ))}
@@ -139,15 +135,15 @@ export default function HomePage() {
       )}
 
       {/* 4. BANNER DE INSTAGRAM */}
-      <div id="contacto" className="w-full bg-[#111111] py-16 md:py-24 text-center border-t border-white/5">
-        <p className="text-brand-muted text-xs md:text-sm font-bold tracking-[0.3em] uppercase mb-6">
+      <div id="contacto" className="w-full bg-[#111111] py-10 md:py-24 text-center border-t border-white/5">
+        <p className="text-brand-muted text-[10px] md:text-sm font-bold tracking-[0.3em] uppercase mb-4 md:mb-6">
           Formá parte de la comunidad
         </p>
         <a 
           href="https://instagram.com/ritual.espacios" 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="inline-flex items-center justify-center gap-4 text-3xl md:text-5xl font-light text-white hover:text-brand-primary transition-colors tracking-widest group"
+          className="inline-flex items-center justify-center gap-3 md:gap-4 text-2xl md:text-5xl font-light text-white hover:text-brand-primary transition-colors tracking-widest group"
         >
           <FaInstagram className="text-brand-primary group-hover:scale-110 transition-transform" /> 
           @RITUAL.ESPACIOS

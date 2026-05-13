@@ -48,10 +48,11 @@ function App() {
       <ScrollToTop />
       
       <div className="flex flex-col min-h-screen bg-brand-gray font-sans text-brand-dark">
-        <header className="bg-white border-b border-brand-border sticky top-0 z-50 shadow-sm">
-          <div className="max-w-[1600px] w-[95%] mx-auto py-3 md:py-4 flex justify-between items-center">
+        {/* HEADER: bg-white sólido y z-50 para tapar contenido al hacer scroll */}
+        <header className="bg-white border-b border-brand-border sticky top-0 z-50 shadow-sm relative">
+          <div className="max-w-[1600px] w-[95%] mx-auto py-3 md:py-4 flex justify-between items-center relative z-50 bg-white">
             
-            <Link to="/" onClick={() => { closeMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex items-center gap-3 md:gap-5 hover:opacity-80 transition-opacity z-50">
+            <Link to="/" onClick={() => { closeMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex items-center gap-3 md:gap-5 hover:opacity-80 transition-opacity">
               <img src="/logo.jpeg" alt="Ritual Espacios" className="h-12 md:h-20 w-auto rounded object-cover shadow-sm border border-brand-border" />
               <div>
                 <h1 className="text-xl md:text-3xl font-light tracking-[0.15em] uppercase m-0 text-brand-dark">Ritual <span className="font-bold text-brand-primary">Espacios</span></h1>
@@ -59,7 +60,7 @@ function App() {
               </div>
             </Link>
             
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden flex items-center gap-2 p-2 border border-brand-border rounded text-brand-dark hover:bg-brand-gray z-50">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden flex items-center gap-2 p-2 border border-brand-border rounded text-brand-dark hover:bg-brand-gray relative z-50">
               <span className="text-[10px] font-bold uppercase tracking-widest">Menú</span>
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -88,23 +89,29 @@ function App() {
             </nav>
           </div>
 
+          {/* MENÚ MÓVIL Y FONDO DE CIERRE */}
           {isMenuOpen && (
-            <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-brand-border shadow-lg flex flex-col py-4 px-4 gap-4 animate-fade-in z-40">
-              <Link to="/" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Inicio <span className="text-brand-primary">→</span></Link>
-              <Link to="/productos" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Productos <span className="text-brand-primary">→</span></Link>
-              <Link to="/tracking" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Seguir mi Pedido <span className="text-brand-primary">→</span></Link>
+            <>
+              {/* Overlay oscuro para cerrar al tocar fuera */}
+              <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={closeMenu}></div>
               
-              <div className="p-4 bg-brand-gray rounded-lg border border-brand-border flex flex-col gap-3 mt-2">
-                <span className="text-brand-dark font-bold uppercase tracking-widest text-xs mb-1 text-center">Contacto Rápido</span>
-                <div className="flex gap-2">
-                   <a href="https://wa.me/5493516071362" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><FaWhatsapp size={20}/></a>
-                   <a href="https://instagram.com/ritual.espacios" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><FaInstagram size={20}/></a>
-                   <a href="mailto:ritualparrillas@gmail.com" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><Mail size={20}/></a>
+              <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-brand-border shadow-lg flex flex-col py-4 px-4 gap-4 animate-fade-in z-40">
+                <Link to="/" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Inicio <span className="text-brand-primary">→</span></Link>
+                <Link to="/productos" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Productos <span className="text-brand-primary">→</span></Link>
+                <Link to="/tracking" onClick={closeMenu} className="p-4 bg-brand-gray rounded-lg text-brand-dark font-bold uppercase tracking-widest flex justify-between items-center border border-brand-border">Seguir mi Pedido <span className="text-brand-primary">→</span></Link>
+                
+                <div className="p-4 bg-brand-gray rounded-lg border border-brand-border flex flex-col gap-3 mt-2">
+                  <span className="text-brand-dark font-bold uppercase tracking-widest text-xs mb-1 text-center">Contacto Rápido</span>
+                  <div className="flex gap-2">
+                     <a href="https://wa.me/5493516071362" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><FaWhatsapp size={20}/></a>
+                     <a href="https://instagram.com/ritual.espacios" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><FaInstagram size={20}/></a>
+                     <a href="mailto:ritualparrillas@gmail.com" onClick={closeMenu} className="flex-1 flex justify-center py-3 bg-white rounded border border-brand-border text-brand-dark hover:text-brand-primary shadow-sm"><Mail size={20}/></a>
+                  </div>
                 </div>
-              </div>
 
-              <Link to="/faq" onClick={closeMenu} className="p-4 bg-white rounded-lg text-brand-muted text-xs font-bold uppercase tracking-widest text-center mt-2 border border-brand-border">Preguntas Frecuentes</Link>
-            </div>
+                <Link to="/faq" onClick={closeMenu} className="p-4 bg-white rounded-lg text-brand-muted text-xs font-bold uppercase tracking-widest text-center mt-2 border border-brand-border">Preguntas Frecuentes</Link>
+              </div>
+            </>
           )}
         </header>
 
@@ -125,7 +132,7 @@ function App() {
         </main>
 
         <Footer />
-        <a href="https://wa.me/5493516071362" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 md:bottom-8 md:right-8 bg-[#25D366] text-white p-3 md:p-4 rounded-full shadow-[0_4px_14px_rgba(37,211,102,0.4)] hover:scale-110 hover:bg-[#20bd5a] transition-all duration-300 z-[100] flex items-center justify-center"><FaWhatsapp className="w-8 h-8 md:w-10 md:h-10" /></a>
+        <a href="https://wa.me/5493516071362" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 md:bottom-8 md:right-8 bg-[#25D366] text-white p-3 md:p-4 rounded-full shadow-[0_4px_14px_rgba(37,211,102,0.4)] hover:scale-110 hover:bg-[#20bd5a] transition-all duration-300 z-[90] flex items-center justify-center"><FaWhatsapp className="w-8 h-8 md:w-10 md:h-10" /></a>
       </div>
     </BrowserRouter>
   );
