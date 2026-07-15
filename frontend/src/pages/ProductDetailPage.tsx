@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, Camera, ShoppingCart, Tag, Box, Ruler, Truck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { trackViewContent, trackAddToCart } from '../utils/metaPixel';
 
 export default function ProductDetailPage() {
   const { sku } = useParams();
@@ -13,7 +14,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+
   const [selectedSize, setSelectedSize] = useState<string>('');
 
   useEffect(() => {
@@ -21,14 +22,15 @@ export default function ProductDetailPage() {
       try {
         const catalog = await catalogService.getCatalog();
         const found = catalog.find(p => p.sku === sku);
-        if (found) { 
+        if (found) {
           setProduct(found);
           if (found.sizes && found.sizes.length === 1) setSelectedSize(found.sizes[0].size);
+          trackViewContent({ id: found.id, name: found.name, salePrice: found.salePrice, categoryName: found.categoryName });
         } else {
           Swal.fire({ icon: 'error', title: 'Extraviado' });
           navigate('/');
         }
-      } catch (err) { Swal.fire({ icon: 'error', title: 'Error de Red' }); } 
+      } catch (err) { Swal.fire({ icon: 'error', title: 'Error de Red' }); }
       finally { setLoading(false); }
     };
     fetchProduct();
@@ -47,14 +49,15 @@ export default function ProductDetailPage() {
     const savedCart = localStorage.getItem('fabrica_cart');
     let currentCart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
     const existingIndex = currentCart.findIndex(item => item.product.id === product.id && item.size === selectedSize);
-    
+
     if (existingIndex >= 0) {
       if (currentCart[existingIndex].quantity >= availableStock) return Swal.fire({ icon: 'warning', text: `Solo quedan ${availableStock} unid.`});
       currentCart[existingIndex].quantity += 1;
     } else {
       currentCart.push({ product, quantity: 1, size: selectedSize || 'Estándar' });
     }
-    
+
+    trackAddToCart({ id: product.id, name: product.name, salePrice: product.salePrice }, 1);
     localStorage.setItem('fabrica_cart', JSON.stringify(currentCart));
     navigate('/productos');
   };
