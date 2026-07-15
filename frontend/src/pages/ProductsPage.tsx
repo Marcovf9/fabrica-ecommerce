@@ -6,6 +6,7 @@ import { optimizeCloudinaryUrl } from '../utils/imageUtils';
 import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Search, Trash2, Plus, Minus, PackageOpen, Eye, LayoutGrid, CreditCard, Truck, Landmark, X } from 'lucide-react';
+import { trackInitiateCheckout, trackPurchase } from '../utils/metaPixel';
 
 export default function ProductsPage() {
   const location = useLocation();
@@ -145,31 +146,45 @@ export default function ProductsPage() {
     try {
       const formattedContact = `${customer.lastName}, ${customer.firstName} | ${customer.email} | Tel: ${customer.phone}`;
       const formattedAddress = `${customer.street} ${customer.number}, CP: ${customer.zip}, ${customer.city}`;
-      const payload = { 
-        customerContact: formattedContact, 
-        deliveryAddress: formattedAddress, 
+      const payload = {
+        customerContact: formattedContact,
+        deliveryAddress: formattedAddress,
         paymentMethod: paymentMethod,
-        items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity, size: item.size })) 
+        items: cart.map(item => ({ productId: item.product.id, quantity: item.quantity, size: item.size }))
       };
-      
+
+      trackInitiateCheckout(
+        cart.map(i => ({ id: i.product.id, price: i.product.salePrice, quantity: i.quantity })),
+        finalTotal
+      );
+
       const response = await orderService.createPendingOrder(payload);
+      const orderCode = response.order.orderCode;
 
       if (paymentMethod === 'TRANSFER') {
+        trackPurchase(orderCode, finalTotal, orderCode, cart.map(i => ({ id: i.product.id, quantity: i.quantity })));
+
         setCart([]);
         setIsMobileCartOpen(false);
         localStorage.removeItem('fabrica_cart');
         localStorage.removeItem('fabrica_customer');
 
         const itemsList = cart.map(i => `${i.quantity}x ${i.product.name} [${i.size}]`).join('\n');
-        const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${response.order.orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 15% OFF): $${finalTotal.toLocaleString('es-AR')}.\nMi envío (Gratis) es a ${formattedAddress}. Solicito los datos bancarios.`;
+        const waMessage = `Hola Ritual Espacios, soy ${customer.firstName} ${customer.lastName}. Generé el pedido #${orderCode} mediante Transferencia.\n\nArtículos:\n${itemsList}\n\nTotal a transferir (Con 15% OFF): $${finalTotal.toLocaleString('es-AR')}.\nMi envío (Gratis) es a ${formattedAddress}. Solicito los datos bancarios.`;
         const waUrl = `https://wa.me/5493516071362?text=${encodeURIComponent(waMessage)}`;
 
         Swal.fire({
           icon: 'success', title: '¡Pedido Registrado!',
-          html: `Código: <b class="text-brand-primary">${response.order.orderCode}</b><br/><br/>Serás redirigido a WhatsApp para coordinar el pago con descuento.`,
+          html: `Código: <b class="text-brand-primary">${orderCode}</b><br/><br/>Serás redirigido a WhatsApp para coordinar el pago con descuento.`,
           confirmButtonColor: '#D67026', confirmButtonText: 'Ir a WhatsApp'
         }).then(() => { window.location.href = waUrl; });
       } else {
+        localStorage.setItem('meta_purchase_pending', JSON.stringify({
+          eventId: orderCode,
+          total: finalTotal,
+          orderCode,
+          items: cart.map(i => ({ id: i.product.id, quantity: i.quantity })),
+        }));
         if (response.checkoutUrl) {
           window.location.href = response.checkoutUrl;
         } else {
