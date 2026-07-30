@@ -1,60 +1,166 @@
-# Ritual Espacios - E-Commerce & ERP Platform
+# Ritual Espacios — Ecommerce
 
-Plataforma integral de comercio electrónico y gestión de recursos empresariales (ERP) desarrollada a medida para **Ritual Espacios**, fábrica de mobiliario exterior sostenible y estructuras de hierro forjado.
+Plataforma de ecommerce para [ritualespacios.com](https://ritualespacios.com), tienda de parrillas, chulengos y accesorios de diseño artesanal. Full-stack con frontend React y backend Spring Boot.
 
-El sistema contempla el flujo completo de ventas al público, automatización de pagos y un panel administrativo avanzado para el control de inventario físico, trazabilidad de pedidos, gestión de variantes de medida y análisis de rentabilidad.
+---
 
-## 🏗 Arquitectura del Sistema
+## Stack
 
-El proyecto está dividido en dos aplicaciones independientes que se comunican mediante una API RESTful asegurada.
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 19 + TypeScript + Vite + Tailwind CSS |
+| Backend | Spring Boot 3.5 + Java + Spring Security (JWT) |
+| Base de datos | MySQL 8 (Docker local / Render producción) |
+| Migraciones | Flyway |
+| Imágenes | Cloudinary |
+| Pagos | MercadoPago SDK |
+| Email | SMTP Gmail |
+| Marketing | Meta Pixel + Conversions API + Catálogo XML |
+| Deploy | Netlify (frontend) + Render (backend) |
 
-### Frontend (Cliente y Panel Administrativo)
-- **Framework:** React.js con TypeScript (empaquetado con Vite).
-- **Estilos:** Tailwind CSS para un diseño fluido, responsivo y *Mobile First*.
-- **Gráficos:** Recharts para la visualización de métricas financieras.
-- **Gestión de Estado:** Context API / LocalStorage para persistencia del carrito, incluso tras interrupciones de pago.
-- **Alertas y UI:** SweetAlert2 para modales y gestión de datos, Lucide React para iconografía.
-- **SEO & Tracking:** Implementación de JSON-LD (Schema.org), etiquetas Open Graph y preparación nativa para Meta Pixel y Google Analytics 4.
+---
 
-### Backend (Core de Negocio y API)
-- **Framework:** Java 17 + Spring Boot 3.
-- **Seguridad:** Spring Security con autenticación basada en tokens JWT.
-- **Pasarela de Pagos:** Integración nativa con el SDK de **Mercado Pago** (Preference API & Webhooks).
-- **Base de Datos:** MySQL gestionada en la nube mediante TiDB.
-- **Migraciones:** Flyway para el control estricto del esquema de base de datos.
-- **ORM:** Hibernate / Spring Data JPA.
-- **Almacenamiento de Archivos:** Integración con Cloudinary API para alojamiento optimizado de fotografías mediante `multipart/form-data`.
-- **Generación de Documentos:** iTextPDF para la creación dinámica de remitos.
-- **Comunicaciones:** JavaMailSender para el disparo automatizado de correos transaccionales (alertas administrativas y notificaciones al cliente).
+## Estructura
 
-## 🚀 Características Principales
+```
+fabrica-ecommerce/
+├── frontend/
+│   └── src/
+│       ├── pages/        # HomePage, ProductsPage, ProductDetailPage, TrackingPage...
+│       ├── components/   # Footer, ScrollToTop
+│       ├── services/     # api.ts (axios)
+│       ├── types/        # interfaces TypeScript
+│       └── utils/        # imageUtils, metaPixel
+├── backend/
+│   └── src/main/java/com/fabrica/ecommerce/
+│       ├── controller/   # Products, Orders, Auth, MetaCatalog, Reports...
+│       ├── service/      # OrderService, ProductService, MetaConversions, Email...
+│       ├── model/        # Product, Order, OrderItem, InventoryBatch...
+│       ├── repository/
+│       ├── dto/
+│       └── security/     # JWT filter, SecurityConfig
+└── docker-compose.yml    # MySQL local
+```
 
-1. **Checkout Automatizado con Mercado Pago:** Flujo de pago integrado con redirección automática y procesamiento de *Webhooks* (IPN) para confirmar cobros y actualizar el estado de los pedidos en tiempo real.
-2. **Sistema de Notificaciones por Correo:** Disparo automático de emails HTML formateados para confirmar compras, despachos, cancelaciones y enviar alertas críticas de stock a la administración.
-3. **Gestión Quirúrgica de Inventario:** Control de stock físico segmentado por ID de producto y variante de medida, con bloqueo automático en el frontend cuando se agota (Quick Select dinámico).
-4. **Dashboard Financiero y ERP:** Panel de administración protegido que calcula en tiempo real ingresos, costos de producción (por lotes) y margen de ganancia neta.
-5. **Recuperación de Carritos:** Captura silenciosa (`onBlur`) de correos y teléfonos para registrar intentos de compra inconclusos y gestionar leads.
-6. **Manejo de Estados de Pedido:** Flujo de auditoría estricto (PENDIENTE -> PAGADO -> DESPACHADO / CANCELADO), con impacto directo en el stock y opciones de eliminación de registros de prueba.
-7. **Gestión Dinámica de Catálogo:** Creación, edición, actualización de precios y reemplazo de fotografías de productos en tiempo real desde el panel de control.
+---
 
-## 🌍 Entorno de Producción y Despliegue
+## Setup local
 
-La infraestructura está alojada íntegramente en la nube y asegurada mediante HTTPS:
-- **Dominio Oficial:** [ritualespacios.com](https://ritualespacios.com) (Gestionado vía GoDaddy DNS).
-- **Frontend Hosting:** Netlify (Red de entrega de contenido global con auditoría estricta de TypeScript).
-- **Backend Hosting:** Render (Servicios web para la API y el procesamiento de Webhooks).
-- **Database:** TiDB Cloud.
-- **Media CDN:** Cloudinary.
+### 1. Base de datos
 
-## ⚙️ Ejecución Local (Desarrollo)
+```bash
+docker-compose up -d
+```
 
-**Backend:**
-1. Configurar las variables de entorno en `application.properties` (Credenciales TiDB, Cloudinary, JWT Secret, MP Access Token, Mail Credentials).
-2. Ejecutar `mvn clean install` para descargar dependencias.
-3. Iniciar el servidor Spring Boot (`http://localhost:8080`). Flyway generará automáticamente las tablas y usuarios base.
+Levanta MySQL en `localhost:3306`. Flyway corre las migraciones automáticamente al iniciar el backend.
 
-**Frontend:**
-1. Navegar a la carpeta del cliente web.
-2. Ejecutar `npm install`.
-3. Iniciar el servidor de desarrollo Vite con `npm run dev`.
-4. El frontend consumirá la API desde el puerto configurado en `.env` (`VITE_API_URL`).
+### 2. Backend
+
+Crear el archivo `backend/src/main/resources/application-secret.properties`:
+
+```properties
+SMTP_PASSWORD=tu_password_de_app_gmail
+CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name
+mercadopago.access.token=tu_token_mp
+META_CAPI_TOKEN=tu_token_capi_meta
+```
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+Corre en `http://localhost:8080`.
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Corre en `http://localhost:5173`. Por defecto apunta al backend en `localhost:8080`.
+
+---
+
+## Variables de entorno en producción
+
+### Backend (Render)
+
+| Variable | Descripción |
+|---|---|
+| `SMTP_PASSWORD` | Password de app Gmail |
+| `CLOUDINARY_URL` | URL completa de Cloudinary |
+| `mercadopago.access.token` | Token de MercadoPago producción |
+| `META_CAPI_TOKEN` | Token de Conversions API de Meta |
+
+### Frontend (Netlify)
+
+| Variable | Descripción |
+|---|---|
+| `VITE_API_URL` | `https://ritual-backend-1bfi.onrender.com` |
+
+---
+
+## API — Endpoints principales
+
+### Públicos
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/products/catalog` | Catálogo activo con stock por talle |
+| `GET` | `/api/products/categories` | Categorías |
+| `POST` | `/api/orders` | Crear pedido |
+| `POST` | `/api/orders/webhook` | Webhook de MercadoPago |
+| `GET` | `/api/orders/:code` | Detalle de pedido (tracking) |
+| `GET` | `/api/meta/catalog.xml` | Feed XML para Meta Ads |
+
+### Protegidos (JWT)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/auth/login` | Login admin |
+| `POST` | `/api/products` | Crear producto |
+| `POST` | `/api/products/:id` | Editar producto |
+| `DELETE` | `/api/products/:id` | Desactivar producto |
+| `POST` | `/api/orders/:code/confirm` | Confirmar pago |
+| `POST` | `/api/orders/:code/ship` | Marcar como despachado |
+| `GET` | `/api/reports/profitability` | Reporte de rentabilidad |
+
+---
+
+## Flujo de una venta
+
+```
+Cliente arma carrito → completa datos → elige método de pago
+  ├── Transferencia → pedido PENDING → admin confirma manualmente → PAID
+  └── MercadoPago  → redirige a checkout → webhook automático → PAID
+                                                    ↓
+                              Stock descontado por lote de inventario
+                              Email al cliente y al admin
+                              Evento Purchase → Meta Conversions API
+```
+
+---
+
+## Integración Meta Ads
+
+| Componente | Detalle |
+|---|---|
+| Pixel ID | `1692923315300704` |
+| Eventos (browser) | PageView, ViewContent, AddToCart, InitiateCheckout, Purchase |
+| CAPI (servidor) | Evento Purchase en `confirmOrder`, deduplicado por `orderCode` |
+| Catálogo | Feed RSS/XML en `/api/meta/catalog.xml`, sincronización horaria en Commerce Manager |
+
+---
+
+## Panel de administración
+
+Ruta: `/admin`
+
+- CRUD de productos con imágenes (Cloudinary)
+- Gestión de órdenes: confirmar, despachar, cancelar, eliminar
+- Control de inventario por lotes con costo unitario
+- Reporte de rentabilidad por categoría
+- Generación de remitos en PDF
