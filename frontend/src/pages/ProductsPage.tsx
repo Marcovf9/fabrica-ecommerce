@@ -46,7 +46,7 @@ export default function ProductsPage() {
       try {
         const data = await catalogService.getCatalog();
         setProducts(data);
-      } catch (err) { setError("Error al cargar el catálogo."); } 
+      } catch { setError("Error al cargar el catálogo."); } 
       finally { setLoading(false); }
     };
     fetchCatalog();
@@ -82,7 +82,7 @@ export default function ProductsPage() {
   const handleSilentCapture = async () => {
     if (cart.length === 0 || (!customer.email.trim() && !customer.phone.trim())) return;
     const cartContent = cart.map(item => `${item.quantity}x ${item.product.name} (${item.size})`).join(' | ');
-    try { await leadService.captureLead({ email: customer.email, phone: customer.phone, cartContent }); } catch (error) {}
+    try { await leadService.captureLead({ email: customer.email, phone: customer.phone, cartContent }); } catch { /* la captura del lead es best-effort: no bloquea el checkout */ }
   };
 
   const addQuantity = (productId: number, size: string) => {
@@ -191,7 +191,7 @@ export default function ProductsPage() {
           Swal.fire({ icon: 'error', title: 'Error de pasarela', text: 'No se pudo generar el link de pago.' });
         }
       }
-    } catch (err) { 
+    } catch { 
       Swal.fire({ icon: 'error', title: 'Error', text: 'Hubo un problema al procesar el pedido.' }); 
     } finally {
       setIsProcessing(false);
