@@ -73,7 +73,7 @@ Tests run against an in-memory H2 database (`test` profile), so no MySQL or exte
 cd backend && ./mvnw test
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests and the frontend typecheck + build on every push to `main` and on every pull request.
+GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests and the frontend typecheck + build on every push to `develop` or `main` and on every pull request.
 
 ## 🌍 Production Environment and Deployment
 
