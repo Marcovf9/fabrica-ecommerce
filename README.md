@@ -8,14 +8,7 @@ The system covers the full retail sales flow, payment automation and an advanced
 
 ## 📸 Screenshots
 
-<!--
-  Images are captured from production by the "Screenshots" GitHub Actions workflow
-  (Actions → Screenshots → Run workflow), which pushes them to the `screenshots` branch.
-  To capture locally instead, run each command on its own line:
-    cd frontend
-    npm i --no-save playwright
-    npx playwright install chromium
-    npm run screenshots
+<!-- Captured from production by the "Screenshots" workflow (Actions → Screenshots → Run workflow). -->
 
 | Storefront | Catalogue |
 |---|---|
@@ -24,7 +17,6 @@ The system covers the full retail sales flow, payment automation and an advanced
 | Product detail (size variants) | Mobile |
 |---|---|
 | ![Product](docs/screenshots/producto.png) | <img src="docs/screenshots/mobile.png" alt="Mobile" width="300"> |
--->
 
 Live site: **[ritualespacios.com](https://ritualespacios.com)**
 
