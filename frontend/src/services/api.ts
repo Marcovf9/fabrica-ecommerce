@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Product, OrderRequestDTO, ProfitabilityReport, Order, OrderDetail } from '../types';
+import type { Product, OrderRequestDTO, ProfitabilityReport, Order, OrderDetail, AbandonedCart } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -115,8 +115,8 @@ export const adminService = {
         });
         return response.data;
     },
-    getAbandonedCarts: async () => {
-        const response = await apiClient.get('/leads');
+    getAbandonedCarts: async (): Promise<AbandonedCart[]> => {
+        const response = await apiClient.get<AbandonedCart[]>('/leads');
         return response.data;
     },
     recoverAbandonedCart: async (id: number) => {

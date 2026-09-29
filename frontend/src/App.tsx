@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
@@ -12,10 +12,23 @@ import FaqPage from './pages/FaqPage';
 import TermsPage from './pages/TermsPage';
 import { Menu, X, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import { trackPageView, trackPurchase } from './utils/metaPixel';
+
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => { trackPageView(); }, [location.pathname]);
+  return null;
+}
 
 const PagoExitoso = () => {
-  useEffect(() => { 
-    localStorage.removeItem('fabrica_cart'); 
+  useEffect(() => {
+    const purchaseData = localStorage.getItem('meta_purchase_pending');
+    if (purchaseData) {
+      const { eventId, total, orderCode, items } = JSON.parse(purchaseData);
+      trackPurchase(eventId, total, orderCode, items);
+      localStorage.removeItem('meta_purchase_pending');
+    }
+    localStorage.removeItem('fabrica_cart');
     localStorage.removeItem('fabrica_customer');
   }, []);
   return (
@@ -46,7 +59,8 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      
+      <RouteTracker />
+
       <div className="flex flex-col min-h-screen bg-brand-gray font-sans text-brand-dark">
         {/* HEADER: bg-white sólido y z-50 para tapar contenido al hacer scroll */}
         <header className="bg-white border-b border-brand-border sticky top-0 z-50 shadow-sm relative">

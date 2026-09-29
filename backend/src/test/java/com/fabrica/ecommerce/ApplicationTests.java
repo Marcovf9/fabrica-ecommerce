@@ -1,10 +1,12 @@
-package com.example.demo;
+package com.fabrica.ecommerce;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-class DemoApplicationTests {
+@ActiveProfiles("test")
+class ApplicationTests {
 
 	@Test
 	void contextLoads() {

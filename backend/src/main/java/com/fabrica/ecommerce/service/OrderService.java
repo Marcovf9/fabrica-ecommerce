@@ -27,6 +27,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final InventoryBatchRepository inventoryBatchRepository;
+    private final MetaConversionsService metaConversionsService;
     private final OrderItemBatchAllocationRepository allocationRepository;
     private final ProductRepository productRepository;
     private final EmailService emailService;
@@ -182,9 +183,12 @@ public class OrderService {
         
         emailService.sendHtmlEmail(adminEmail, "💰 PAGO APROBADO - #" + savedOrder.getOrderCode(), buildProfessionalEmail("¡Venta Pagada!", "<p>Ingresó un pago por <b>$" + savedOrder.getTotalSaleAmount() + "</b> del cliente " + savedOrder.getCustomerContact() + ".</p><p>Ingresa al panel para gestionar el despacho.</p>", null));
 
+        List<Long> productIds = items.stream().map(i -> i.getProduct().getId()).toList();
+        metaConversionsService.sendPurchaseEvent(savedOrder.getOrderCode(), savedOrder.getTotalSaleAmount(), productIds);
+
         return savedOrder;
     }
-    
+
     @Transactional
     public Order shipOrder(String orderCode) {
         Order order = orderRepository.findByOrderCode(orderCode)

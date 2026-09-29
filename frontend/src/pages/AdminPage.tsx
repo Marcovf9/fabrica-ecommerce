@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
+import { isAxiosError } from 'axios';
 import { adminService, catalogService, authService } from '../services/api';
-import type { Product, ProfitabilityReport, Order, OrderDetail } from '../types';
+import type { Product, ProfitabilityReport, Order, OrderDetail, AbandonedCart } from '../types';
 import Swal from 'sweetalert2';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { LogOut, Tag, Archive, BarChart3, ShoppingBag, Ghost, FileText, Download, Check, X } from 'lucide-react';
 
+const generateSku = () => `PRD-${Date.now().toString().slice(-6)}`;
+
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('admin_token')));
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -22,11 +25,9 @@ export default function AdminPage() {
   const [newBatch, setNewBatch] = useState({ productId: 0, size: '', quantityProduced: '', totalBatchCost: '' });
 
   const selectedProductForBatch = products.find(p => p.id === newBatch.productId);
-  const [abandonedCarts, setAbandonedCarts] = useState<any[]>([]);
+  const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCart[]>([]);
 
-  useEffect(() => { const token = localStorage.getItem('admin_token'); if (token) { setIsAuthenticated(true); } }, []);
-
-  const loadAbandonedCarts = async () => { try { const data = await adminService.getAbandonedCarts(); setAbandonedCarts(data.reverse()); } catch (error) { } };
+  const loadAbandonedCarts = async () => { try { const data = await adminService.getAbandonedCarts(); setAbandonedCarts(data.reverse()); } catch { /* si falla la carga, la sección queda vacía */ } };
 
   const handleRecoverCart = async (id: number) => {
     try { await adminService.recoverAbandonedCart(id); Swal.fire({ icon: 'success', title: 'Recuperado', timer: 1500, showConfirmButton: false }); loadAbandonedCarts(); } catch (error) { handleApiError(error); }
@@ -37,11 +38,10 @@ export default function AdminPage() {
     if (result.isConfirmed) { try { await adminService.deleteAbandonedCart(id); Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false }); loadAbandonedCarts(); } catch (error) { handleApiError(error); } }
   };
 
-  useEffect(() => { if (isAuthenticated) { loadCategories(); loadProducts(); loadReport(); loadOrders(); loadAbandonedCarts(); } }, [isAuthenticated]);
-
-  const handleApiError = (error: any, defaultMessage: string = 'Ocurrió un error') => {
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) { handleLogout(); Swal.fire({ icon: 'error', title: 'Sesión expirada' }); } 
-    else { Swal.fire({ icon: 'error', title: 'Error', text: error.response?.data?.message || defaultMessage }); }
+  const handleApiError = (error: unknown, defaultMessage: string = 'Ocurrió un error') => {
+    const response = isAxiosError(error) ? error.response : undefined;
+    if (response && (response.status === 401 || response.status === 403)) { handleLogout(); Swal.fire({ icon: 'error', title: 'Sesión expirada' }); } 
+    else { Swal.fire({ icon: 'error', title: 'Error', text: response?.data?.message || defaultMessage }); }
   };
 
   const loadCategories = async () => {
@@ -49,24 +49,28 @@ export default function AdminPage() {
       const data = await catalogService.getCategories();
       setCategories(data);
       if (data.length > 0) setNewProduct(prev => ({ ...prev, categoryId: data[0].id }));
-    } catch (error) { }
+    } catch { /* si falla la carga, la sección queda vacía */ }
   };
 
-  const loadProducts = async () => { try { const data = await catalogService.getCatalog(); setProducts(data); if (data.length > 0) setNewBatch(prev => ({ ...prev, productId: data[0].id })); } catch (error) { } };
-  const loadReport = async () => { try { const data = await adminService.getProfitabilityReport(); setReport(data); } catch (error) { } };
-  const loadOrders = async () => { try { const data = await adminService.getOrders(); setOrders(data.reverse()); } catch (error) { } };
+  const loadProducts = async () => { try { const data = await catalogService.getCatalog(); setProducts(data); if (data.length > 0) setNewBatch(prev => ({ ...prev, productId: data[0].id })); } catch { /* si falla la carga, la sección queda vacía */ } };
+  const loadReport = async () => { try { const data = await adminService.getProfitabilityReport(); setReport(data); } catch { /* si falla la carga, la sección queda vacía */ } };
+  const loadOrders = async () => { try { const data = await adminService.getOrders(); setOrders(data.reverse()); } catch { /* si falla la carga, la sección queda vacía */ } };
+
+  // Los loaders solo llaman a setState después de un await (fetch de datos), no de forma síncrona
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (isAuthenticated) { loadCategories(); loadProducts(); loadReport(); loadOrders(); loadAbandonedCarts(); } }, [isAuthenticated]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try { const data = await authService.login({ username, password }); localStorage.setItem('admin_token', data.token); setIsAuthenticated(true); } 
-    catch (error) { Swal.fire({ icon: 'error', title: 'Acceso Denegado' }); }
+    catch { Swal.fire({ icon: 'error', title: 'Acceso Denegado' }); }
   };
 
   const handleLogout = () => { localStorage.removeItem('admin_token'); setIsAuthenticated(false); setUsername(''); setPassword(''); };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const generatedSku = `PRD-${Date.now().toString().slice(-6)}`;
+    const generatedSku = generateSku();
     const formData = new FormData();
     formData.append('categoryId', newProduct.categoryId.toString()); 
     formData.append('sku', generatedSku); 
@@ -105,17 +109,17 @@ export default function AdminPage() {
 
   const handleConfirmOrder = async (orderCode: string) => {
     const result = await Swal.fire({ title: '¿Confirmar Pago?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#D67026' });
-    if (result.isConfirmed) { try { await adminService.confirmOrder(orderCode); Swal.fire({ icon: 'success', title: '¡Cobrado!', timer: 2000, showConfirmButton: false }); loadOrders(); loadProducts(); loadReport(); } catch (error: any) { handleApiError(error); } }
+    if (result.isConfirmed) { try { await adminService.confirmOrder(orderCode); Swal.fire({ icon: 'success', title: '¡Cobrado!', timer: 2000, showConfirmButton: false }); loadOrders(); loadProducts(); loadReport(); } catch (error) { handleApiError(error); } }
   };
 
   const handleShipOrder = async (orderCode: string) => {
     const result = await Swal.fire({ title: '¿Despachar?', icon: 'info', showCancelButton: true, confirmButtonColor: '#2980b9' });
-    if (result.isConfirmed) { try { await adminService.shipOrder(orderCode); Swal.fire({ icon: 'success', title: '¡Despachado!', timer: 2000, showConfirmButton: false }); loadOrders(); } catch (error: any) { handleApiError(error); } }
+    if (result.isConfirmed) { try { await adminService.shipOrder(orderCode); Swal.fire({ icon: 'success', title: '¡Despachado!', timer: 2000, showConfirmButton: false }); loadOrders(); } catch (error) { handleApiError(error); } }
   };
 
   const handleCancelOrder = async (orderCode: string) => {
     const result = await Swal.fire({ title: '¿Cancelar Pedido?', icon: 'error', showCancelButton: true, confirmButtonColor: '#e74c3c' });
-    if (result.isConfirmed) { try { await adminService.cancelOrder(orderCode); Swal.fire({ icon: 'success', title: 'Cancelado', timer: 2000, showConfirmButton: false }); loadOrders(); loadProducts(); } catch (error: any) { handleApiError(error); } }
+    if (result.isConfirmed) { try { await adminService.cancelOrder(orderCode); Swal.fire({ icon: 'success', title: 'Cancelado', timer: 2000, showConfirmButton: false }); loadOrders(); loadProducts(); } catch (error) { handleApiError(error); } }
   };
 
   const handleViewDetails = async (orderCode: string) => {
@@ -139,7 +143,7 @@ export default function AdminPage() {
         await adminService.deleteOrder(orderCode); 
         Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500, showConfirmButton: false }); 
         loadOrders(); 
-      } catch (error: any) { handleApiError(error); } 
+      } catch (error) { handleApiError(error); } 
     }
   };
 
@@ -270,7 +274,7 @@ export default function AdminPage() {
                     tickFormatter={(value) => value.length > 12 ? value.substring(0, 12) + '...' : value}
                   />
                   <YAxis tickFormatter={(val) => `$${(val / 1000)}k`} stroke="#6B7280" fontSize={10} />
-                  <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', borderRadius: '8px', fontSize: '12px' }} />
+                  <RechartsTooltip formatter={(value) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', borderRadius: '8px', fontSize: '12px' }} />
                   <Legend wrapperStyle={{ color: '#6B7280', fontSize: '10px', marginTop: '10px' }} />
                   <Bar dataKey="totalRevenue" name="Ingresos" fill="#D67026" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="totalCost" name="Costos" fill="#111827" radius={[4, 4, 0, 0]} />
@@ -287,7 +291,7 @@ export default function AdminPage() {
                   <Pie data={report} dataKey="netProfit" nameKey="category" cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5}>
                     {report.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(value: any) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', borderRadius: '8px', fontSize: '12px' }} />
+                  <RechartsTooltip formatter={(value) => `$${Number(value).toLocaleString('es-AR')}`} contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', borderRadius: '8px', fontSize: '12px' }} />
                   <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: '#6B7280', fontSize: '10px' }}/>
                 </PieChart>
               </ResponsiveContainer>

@@ -21,8 +21,8 @@ export default function HomePage() {
     fetchCatalog();
   }, []);
 
-  const featuredProducts = products.filter(p => (p as any).isFeatured).length > 0 
-    ? products.filter(p => (p as any).isFeatured) 
+  const featuredProducts = products.filter(p => p.isFeatured).length > 0 
+    ? products.filter(p => p.isFeatured) 
     : products.slice(0, 4);
 
   const categoryFilters = [

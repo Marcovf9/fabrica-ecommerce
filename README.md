@@ -1,60 +1,94 @@
-# Ritual Espacios - E-Commerce & ERP Platform
+# Ritual Espacios — E-Commerce & ERP Platform
 
-Plataforma integral de comercio electrónico y gestión de recursos empresariales (ERP) desarrollada a medida para **Ritual Espacios**, fábrica de mobiliario exterior sostenible y estructuras de hierro forjado.
+[![CI](https://github.com/Marcovf9/fabrica-ecommerce/actions/workflows/ci.yml/badge.svg)](https://github.com/Marcovf9/fabrica-ecommerce/actions/workflows/ci.yml)
 
-El sistema contempla el flujo completo de ventas al público, automatización de pagos y un panel administrativo avanzado para el control de inventario físico, trazabilidad de pedidos, gestión de variantes de medida y análisis de rentabilidad.
+End-to-end e-commerce and enterprise resource planning (ERP) platform built to order for **Ritual Espacios**, a manufacturer of sustainable outdoor furniture and wrought-iron structures.
 
-## 🏗 Arquitectura del Sistema
+The system covers the full retail sales flow, payment automation and an advanced admin panel for physical inventory control, order traceability, size-variant management and profitability analysis.
 
-El proyecto está dividido en dos aplicaciones independientes que se comunican mediante una API RESTful asegurada.
+## 📸 Screenshots
 
-### Frontend (Cliente y Panel Administrativo)
-- **Framework:** React.js con TypeScript (empaquetado con Vite).
-- **Estilos:** Tailwind CSS para un diseño fluido, responsivo y *Mobile First*.
-- **Gráficos:** Recharts para la visualización de métricas financieras.
-- **Gestión de Estado:** Context API / LocalStorage para persistencia del carrito, incluso tras interrupciones de pago.
-- **Alertas y UI:** SweetAlert2 para modales y gestión de datos, Lucide React para iconografía.
-- **SEO & Tracking:** Implementación de JSON-LD (Schema.org), etiquetas Open Graph y preparación nativa para Meta Pixel y Google Analytics 4.
+<!-- Captured from production by the "Screenshots" workflow (Actions → Screenshots → Run workflow). -->
 
-### Backend (Core de Negocio y API)
-- **Framework:** Java 17 + Spring Boot 3.
-- **Seguridad:** Spring Security con autenticación basada en tokens JWT.
-- **Pasarela de Pagos:** Integración nativa con el SDK de **Mercado Pago** (Preference API & Webhooks).
-- **Base de Datos:** MySQL gestionada en la nube mediante TiDB.
-- **Migraciones:** Flyway para el control estricto del esquema de base de datos.
+| Storefront | Catalogue |
+|---|---|
+| ![Home](docs/screenshots/home.png) | ![Catalogue](docs/screenshots/catalogo.png) |
+
+| Product detail (size variants) | Mobile |
+|---|---|
+| ![Product](docs/screenshots/producto.png) | <img src="docs/screenshots/mobile.png" alt="Mobile" width="300"> |
+
+Live site: **[ritualespacios.com](https://ritualespacios.com)**
+
+## 🏗 System Architecture
+
+The project is split into two independent applications that communicate through a secured RESTful API.
+
+### Frontend (Storefront and Admin Panel)
+- **Framework:** React.js with TypeScript (bundled with Vite).
+- **Styling:** Tailwind CSS for a fluid, responsive, *mobile-first* design.
+- **Charts:** Recharts for financial metrics visualisation.
+- **State management:** Context API / LocalStorage for cart persistence, even after payment interruptions.
+- **Alerts and UI:** SweetAlert2 for modals and data handling, Lucide React for iconography.
+- **SEO & tracking:** JSON-LD (Schema.org) implementation, Open Graph tags and native readiness for Meta Pixel and Google Analytics 4.
+
+### Backend (Business Core and API)
+- **Framework:** Java 21 + Spring Boot 3.
+- **Security:** Spring Security with JWT token-based authentication.
+- **Payment gateway:** Native integration with the **Mercado Pago** SDK (Preference API & Webhooks).
+- **Database:** MySQL hosted in the cloud via TiDB.
+- **Migrations:** Flyway for strict database schema control.
 - **ORM:** Hibernate / Spring Data JPA.
-- **Almacenamiento de Archivos:** Integración con Cloudinary API para alojamiento optimizado de fotografías mediante `multipart/form-data`.
-- **Generación de Documentos:** iTextPDF para la creación dinámica de remitos.
-- **Comunicaciones:** JavaMailSender para el disparo automatizado de correos transaccionales (alertas administrativas y notificaciones al cliente).
+- **File storage:** Cloudinary API integration for optimised photo hosting via `multipart/form-data`.
+- **Document generation:** iTextPDF for dynamic delivery-note generation.
+- **Communications:** JavaMailSender for automated transactional emails (admin alerts and customer notifications).
 
-## 🚀 Características Principales
+## 🚀 Key Features
 
-1. **Checkout Automatizado con Mercado Pago:** Flujo de pago integrado con redirección automática y procesamiento de *Webhooks* (IPN) para confirmar cobros y actualizar el estado de los pedidos en tiempo real.
-2. **Sistema de Notificaciones por Correo:** Disparo automático de emails HTML formateados para confirmar compras, despachos, cancelaciones y enviar alertas críticas de stock a la administración.
-3. **Gestión Quirúrgica de Inventario:** Control de stock físico segmentado por ID de producto y variante de medida, con bloqueo automático en el frontend cuando se agota (Quick Select dinámico).
-4. **Dashboard Financiero y ERP:** Panel de administración protegido que calcula en tiempo real ingresos, costos de producción (por lotes) y margen de ganancia neta.
-5. **Recuperación de Carritos:** Captura silenciosa (`onBlur`) de correos y teléfonos para registrar intentos de compra inconclusos y gestionar leads.
-6. **Manejo de Estados de Pedido:** Flujo de auditoría estricto (PENDIENTE -> PAGADO -> DESPACHADO / CANCELADO), con impacto directo en el stock y opciones de eliminación de registros de prueba.
-7. **Gestión Dinámica de Catálogo:** Creación, edición, actualización de precios y reemplazo de fotografías de productos en tiempo real desde el panel de control.
+1. **Automated checkout with Mercado Pago:** Integrated payment flow with automatic redirection and *webhook* (IPN) processing to confirm payments and update order status in real time.
+2. **Email notification system:** Automatic dispatch of formatted HTML emails to confirm purchases, shipments and cancellations, and to send critical stock alerts to the admin team.
+3. **Fine-grained inventory management:** Physical stock control segmented by product ID and size variant, with automatic frontend blocking when stock runs out (dynamic Quick Select).
+4. **Financial dashboard and ERP:** Protected admin panel that calculates revenue, production costs (by batch) and net profit margin in real time.
+5. **Cart recovery:** Silent capture (`onBlur`) of emails and phone numbers to log abandoned purchase attempts and manage leads.
+6. **Order status handling:** Strict audit flow (PENDING → PAID → SHIPPED / CANCELLED), with direct impact on stock and options to delete test records.
+7. **Dynamic catalogue management:** Real-time product creation, editing, price updates and photo replacement from the control panel.
 
-## 🌍 Entorno de Producción y Despliegue
+## ✅ Tests and CI
 
-La infraestructura está alojada íntegramente en la nube y asegurada mediante HTTPS:
-- **Dominio Oficial:** [ritualespacios.com](https://ritualespacios.com) (Gestionado vía GoDaddy DNS).
-- **Frontend Hosting:** Netlify (Red de entrega de contenido global con auditoría estricta de TypeScript).
-- **Backend Hosting:** Render (Servicios web para la API y el procesamiento de Webhooks).
+The backend tests cover the business-critical paths:
+
+- **Mercado Pago webhook** (`MercadoPagoWebhookTest`): only an `approved` payment for a `PENDING` order confirms it; rejected payments, duplicate notifications, unknown references, non-payment topics, malformed payloads and MP API failures are ignored without breaking the IPN response.
+- **Per-variant stock control** (`OrderServiceStockTest`): FIFO consumption of inventory batches of the purchased size only, cost-of-goods calculation, `InsufficientStockException` when a size runs out, idempotent confirmation, and stock restored to the original batches when an order is deleted.
+- **Batch repository** (`InventoryBatchRepositoryTest`): the per-size availability query on a real (H2) database.
+
+Tests run against an in-memory H2 database (`test` profile), so no MySQL or external credentials are needed:
+
+```bash
+cd backend && ./mvnw test
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests and the frontend typecheck + build on every push to `develop` or `main` and on every pull request.
+
+## 🌍 Production Environment and Deployment
+
+The infrastructure is fully cloud-hosted and secured over HTTPS:
+- **Official domain:** [ritualespacios.com](https://ritualespacios.com) (managed via GoDaddy DNS).
+- **Frontend hosting:** Netlify (global CDN with strict TypeScript auditing).
+- **Backend hosting:** Render (web services for the API and webhook processing).
 - **Database:** TiDB Cloud.
 - **Media CDN:** Cloudinary.
 
-## ⚙️ Ejecución Local (Desarrollo)
+## ⚙️ Running Locally (Development)
 
 **Backend:**
-1. Configurar las variables de entorno en `application.properties` (Credenciales TiDB, Cloudinary, JWT Secret, MP Access Token, Mail Credentials).
-2. Ejecutar `mvn clean install` para descargar dependencias.
-3. Iniciar el servidor Spring Boot (`http://localhost:8080`). Flyway generará automáticamente las tablas y usuarios base.
+1. Set the environment variables (TiDB credentials, `CLOUDINARY_URL`, `MERCADOPAGO_ACCESS_TOKEN`, `SMTP_PASSWORD`, plus):
+   - `JWT_SECRET`: Base64 key of at least 256 bits (`openssl rand -base64 32`). Without it a random key is generated at startup and admin sessions do not survive a restart.
+   - `ADMIN_USERS`: admin panel users as `user1:password1,user2:password2`. Missing users are created and changed passwords are rotated on startup; without it no users are touched.
+2. Run `./mvnw clean install` to download dependencies and run the tests.
+3. Start the Spring Boot server (`http://localhost:8080`). Flyway will automatically create the tables and base users.
 
 **Frontend:**
-1. Navegar a la carpeta del cliente web.
-2. Ejecutar `npm install`.
-3. Iniciar el servidor de desarrollo Vite con `npm run dev`.
-4. El frontend consumirá la API desde el puerto configurado en `.env` (`VITE_API_URL`).
+1. Navigate to the web client folder.
+2. Run `npm install`.
+3. Start the Vite development server with `npm run dev`.
+4. The frontend will consume the API from the port configured in `.env` (`VITE_API_URL`).

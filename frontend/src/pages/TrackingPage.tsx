@@ -23,7 +23,7 @@ export default function TrackingPage() {
       const formattedCode = codeToSearch.trim().toUpperCase();
       const data = await orderService.getOrderDetails(formattedCode);
       setOrder(data);
-    } catch (error: any) { Swal.fire({ icon: 'error', title: 'No encontrado', text: 'No existe un pedido con ese código o hubo un error.' }); } 
+    } catch { Swal.fire({ icon: 'error', title: 'No encontrado', text: 'No existe un pedido con ese código o hubo un error.' }); } 
     finally { setLoading(false); }
   };
 

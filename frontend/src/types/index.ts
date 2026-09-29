@@ -69,3 +69,13 @@ export interface OrderDetail {
     totalSaleAmount: number;
     items: OrderItemDetail[];
 }
+
+export interface AbandonedCart {
+    id: number;
+    customerEmail: string;
+    customerPhone: string;
+    cartContent: string;
+    capturedAt: string;
+    recovered: boolean;
+    notified: boolean;
+}
