@@ -1,8 +1,30 @@
 # Ritual Espacios — E-Commerce & ERP Platform
 
+[![CI](https://github.com/Marcovf9/fabrica-ecommerce/actions/workflows/ci.yml/badge.svg)](https://github.com/Marcovf9/fabrica-ecommerce/actions/workflows/ci.yml)
+
 End-to-end e-commerce and enterprise resource planning (ERP) platform built to order for **Ritual Espacios**, a manufacturer of sustainable outdoor furniture and wrought-iron structures.
 
 The system covers the full retail sales flow, payment automation and an advanced admin panel for physical inventory control, order traceability, size-variant management and profitability analysis.
+
+## 📸 Screenshots
+
+<!--
+  Generate the images from production with:
+    cd frontend
+    npm i --no-save playwright && npx playwright install chromium
+    ADMIN_USER=... ADMIN_PASS=... npm run screenshots
+  They are saved to docs/screenshots/. Commit them and delete the comment markers around this table.
+
+| Storefront | Catalogue |
+|---|---|
+| ![Home](docs/screenshots/home.png) | ![Catalogue](docs/screenshots/catalogo.png) |
+| **Product detail (size variants)** | **Admin panel / ERP** |
+| ![Product](docs/screenshots/producto.png) | ![Admin](docs/screenshots/admin.png) |
+
+<p align="center"><img src="docs/screenshots/mobile.png" alt="Mobile" width="300"></p>
+-->
+
+Live site: **[ritualespacios.com](https://ritualespacios.com)**
 
 ## 🏗 System Architecture
 
@@ -17,7 +39,7 @@ The project is split into two independent applications that communicate through 
 - **SEO & tracking:** JSON-LD (Schema.org) implementation, Open Graph tags and native readiness for Meta Pixel and Google Analytics 4.
 
 ### Backend (Business Core and API)
-- **Framework:** Java 17 + Spring Boot 3.
+- **Framework:** Java 21 + Spring Boot 3.
 - **Security:** Spring Security with JWT token-based authentication.
 - **Payment gateway:** Native integration with the **Mercado Pago** SDK (Preference API & Webhooks).
 - **Database:** MySQL hosted in the cloud via TiDB.
@@ -37,6 +59,22 @@ The project is split into two independent applications that communicate through 
 6. **Order status handling:** Strict audit flow (PENDING → PAID → SHIPPED / CANCELLED), with direct impact on stock and options to delete test records.
 7. **Dynamic catalogue management:** Real-time product creation, editing, price updates and photo replacement from the control panel.
 
+## ✅ Tests and CI
+
+The backend tests cover the business-critical paths:
+
+- **Mercado Pago webhook** (`MercadoPagoWebhookTest`): only an `approved` payment for a `PENDING` order confirms it; rejected payments, duplicate notifications, unknown references, non-payment topics, malformed payloads and MP API failures are ignored without breaking the IPN response.
+- **Per-variant stock control** (`OrderServiceStockTest`): FIFO consumption of inventory batches of the purchased size only, cost-of-goods calculation, `InsufficientStockException` when a size runs out, idempotent confirmation, and stock restored to the original batches when an order is deleted.
+- **Batch repository** (`InventoryBatchRepositoryTest`): the per-size availability query on a real (H2) database.
+
+Tests run against an in-memory H2 database (`test` profile), so no MySQL or external credentials are needed:
+
+```bash
+cd backend && ./mvnw test
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the backend tests and the frontend typecheck + build on every push to `main` and on every pull request.
+
 ## 🌍 Production Environment and Deployment
 
 The infrastructure is fully cloud-hosted and secured over HTTPS:
@@ -50,7 +88,7 @@ The infrastructure is fully cloud-hosted and secured over HTTPS:
 
 **Backend:**
 1. Set the environment variables in `application.properties` (TiDB credentials, Cloudinary, JWT secret, Mercado Pago access token, mail credentials).
-2. Run `mvn clean install` to download dependencies.
+2. Run `./mvnw clean install` to download dependencies and run the tests.
 3. Start the Spring Boot server (`http://localhost:8080`). Flyway will automatically create the tables and base users.
 
 **Frontend:**
