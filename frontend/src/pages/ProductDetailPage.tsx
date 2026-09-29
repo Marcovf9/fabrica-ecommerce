@@ -30,7 +30,7 @@ export default function ProductDetailPage() {
           Swal.fire({ icon: 'error', title: 'Extraviado' });
           navigate('/');
         }
-      } catch (err) { Swal.fire({ icon: 'error', title: 'Error de Red' }); }
+      } catch { Swal.fire({ icon: 'error', title: 'Error de Red' }); }
       finally { setLoading(false); }
     };
     fetchProduct();
@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
     if (product.sizes && product.sizes.length > 0 && !selectedSize) return Swal.fire({ icon: 'warning', text: 'Selecciona una medida.' });
 
     const savedCart = localStorage.getItem('fabrica_cart');
-    let currentCart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
+    const currentCart: CartItem[] = savedCart ? JSON.parse(savedCart) : [];
     const existingIndex = currentCart.findIndex(item => item.product.id === product.id && item.size === selectedSize);
 
     if (existingIndex >= 0) {

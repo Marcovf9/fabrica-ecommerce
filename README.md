@@ -9,19 +9,21 @@ The system covers the full retail sales flow, payment automation and an advanced
 ## 📸 Screenshots
 
 <!--
-  Generate the images from production with:
+  Images are captured from production by the "Screenshots" GitHub Actions workflow
+  (Actions → Screenshots → Run workflow), which pushes them to the `screenshots` branch.
+  To capture locally instead, run each command on its own line:
     cd frontend
-    npm i --no-save playwright && npx playwright install chromium
-    ADMIN_USER=... ADMIN_PASS=... npm run screenshots
-  They are saved to docs/screenshots/. Commit them and delete the comment markers around this table.
+    npm i --no-save playwright
+    npx playwright install chromium
+    npm run screenshots
 
 | Storefront | Catalogue |
 |---|---|
 | ![Home](docs/screenshots/home.png) | ![Catalogue](docs/screenshots/catalogo.png) |
-| **Product detail (size variants)** | **Admin panel / ERP** |
-| ![Product](docs/screenshots/producto.png) | ![Admin](docs/screenshots/admin.png) |
 
-<p align="center"><img src="docs/screenshots/mobile.png" alt="Mobile" width="300"></p>
+| Product detail (size variants) | Mobile |
+|---|---|
+| ![Product](docs/screenshots/producto.png) | <img src="docs/screenshots/mobile.png" alt="Mobile" width="300"> |
 -->
 
 Live site: **[ritualespacios.com](https://ritualespacios.com)**
@@ -87,7 +89,9 @@ The infrastructure is fully cloud-hosted and secured over HTTPS:
 ## ⚙️ Running Locally (Development)
 
 **Backend:**
-1. Set the environment variables in `application.properties` (TiDB credentials, Cloudinary, JWT secret, Mercado Pago access token, mail credentials).
+1. Set the environment variables (TiDB credentials, `CLOUDINARY_URL`, `MERCADOPAGO_ACCESS_TOKEN`, `SMTP_PASSWORD`, plus):
+   - `JWT_SECRET`: Base64 key of at least 256 bits (`openssl rand -base64 32`). Without it a random key is generated at startup and admin sessions do not survive a restart.
+   - `ADMIN_USERS`: admin panel users as `user1:password1,user2:password2`. Missing users are created and changed passwords are rotated on startup; without it no users are touched.
 2. Run `./mvnw clean install` to download dependencies and run the tests.
 3. Start the Spring Boot server (`http://localhost:8080`). Flyway will automatically create the tables and base users.
 

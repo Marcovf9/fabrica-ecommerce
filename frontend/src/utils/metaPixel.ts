@@ -13,7 +13,7 @@ export function initMetaPixel() {
   (function (f: Window, b: Document, e: string, v: string) {
     const n = (f.fbq = function (...args: unknown[]) {
       // @ts-expect-error fbq internals
-      n.callMethod ? n.callMethod(...args) : n.queue.push(args);
+      if (n.callMethod) n.callMethod(...args); else n.queue.push(args);
     });
     if (!f._fbq) f._fbq = n;
     // @ts-expect-error fbq internals

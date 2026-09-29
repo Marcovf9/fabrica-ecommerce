@@ -1,8 +1,11 @@
 // Captura las imágenes del README desde el sitio en producción (o cualquier BASE_URL).
 //
-//   npm i --no-save playwright && npx playwright install chromium   # solo la primera vez
+//   npm i --no-save playwright            # solo la primera vez
+//   npx playwright install chromium       # solo la primera vez
 //   npm run screenshots
 //   ADMIN_USER=... ADMIN_PASS=... npm run screenshots   # incluye el panel de administración
+//
+// Ojo: admin.png muestra pedidos y datos de clientes reales; revisala antes de publicarla.
 //
 // Las imágenes se guardan en docs/screenshots/ en la raíz del repo.
 import { chromium, devices } from 'playwright';
