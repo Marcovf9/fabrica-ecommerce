@@ -1,6 +1,6 @@
 declare global {
   interface Window {
-    fbq: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
     _fbq: unknown;
   }
 }
@@ -31,7 +31,8 @@ export function initMetaPixel() {
     s.parentNode?.insertBefore(t, s);
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
 
-  window.fbq('init', PIXEL_ID);
+  // El IIFE asigna window.fbq, pero TS lo sigue considerando undefined por el guard de arriba
+  (window.fbq as Window['fbq'])?.('init', PIXEL_ID);
 }
 
 export function trackPageView() {
