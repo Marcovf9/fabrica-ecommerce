@@ -1,0 +1,47 @@
+name: Screenshots
+
+# Captura las imágenes del README desde el sitio en producción y las publica en la
+# rama `screenshots` para revisarlas antes de llevarlas a develop.
+# Solo páginas públicas: el panel de admin muestra datos de clientes.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: URL del sitio a capturar
+        default: https://ritualespacios.com
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar Playwright
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capturar
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: npm run screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots
+      - name: Publicar en la rama screenshots
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B screenshots
+          git add docs/screenshots
+          git commit -m "docs: capturas de ${{ inputs.base_url }}"
+          git push -f origin screenshots
